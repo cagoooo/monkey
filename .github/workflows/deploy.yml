@@ -1,0 +1,38 @@
+name: Deploy 🐒 Monkey to GitHub Pages 🚢
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout 🛎️
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js ⚙️
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install dependencies 📦
+        run: npm install
+
+      - name: Build 🏗️
+        run: npm run build
+        env:
+          VITE_FIREBASE_API_KEY: "__FIREBASE_API_KEY__" # 依照使用者規範使用佔位符
+
+      - name: Deploy 🚀
+        uses: JamesIves/github-pages-deploy-action@v4
+        with:
+          folder: dist
+          branch: gh-pages # 這是 GitHub Pages 的標準分支
