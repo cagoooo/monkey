@@ -6,6 +6,36 @@
 class SoundService {
   private ctx: AudioContext | null = null;
   private muted: boolean = false;
+  private isInitialized: boolean = false;
+
+  constructor() {
+    // Standard approach to satisfy browser autoplay policies
+    const resume = () => {
+      if (this.ctx && this.ctx.state === 'suspended') {
+        this.ctx.resume().then(() => {
+          this.isInitialized = true;
+          this.removeListeners(resume);
+        }).catch(() => { });
+      } else if (this.ctx && this.ctx.state === 'running') {
+        this.isInitialized = true;
+        this.removeListeners(resume);
+      }
+    };
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('click', resume);
+      window.addEventListener('keydown', resume);
+      window.addEventListener('touchstart', resume);
+    }
+  }
+
+  private removeListeners(handler: () => void) {
+    if (typeof window !== 'undefined') {
+      window.removeEventListener('click', handler);
+      window.removeEventListener('keydown', handler);
+      window.removeEventListener('touchstart', handler);
+    }
+  }
 
   setMuted(muted: boolean) {
     this.muted = muted;
@@ -200,7 +230,7 @@ class SoundService {
     if (!this.ctx) return;
     // "Oh-oh" sound: two notes
     const now = this.ctx.currentTime;
-    
+
     // First "Oh"
     const osc1 = this.ctx.createOscillator();
     const gain1 = this.ctx.createGain();
@@ -252,11 +282,11 @@ class SoundService {
       const gain = this.ctx!.createGain();
       osc.type = 'square';
       osc.frequency.setValueAtTime(note.f, now + note.t);
-      
+
       gain.gain.setValueAtTime(0, now + note.t);
       gain.gain.linearRampToValueAtTime(0.2, now + note.t + 0.05);
       gain.gain.exponentialRampToValueAtTime(0.001, now + note.t + note.d);
-      
+
       osc.connect(gain);
       gain.connect(this.ctx!.destination);
       osc.start(now + note.t);
@@ -286,7 +316,7 @@ class SoundService {
 
     const tempo = 150;
     const quarterNote = 60 / tempo;
-    
+
     // Catchy 8-bit melody loop
     // C, E, G, C, G, E, C...
     const melody = [
@@ -299,23 +329,23 @@ class SoundService {
     let step = 0;
     const playStep = () => {
       if (!this.isBgmPlaying || !this.ctx || this.muted) return;
-      
+
       const freq = melody[step % melody.length];
       if (freq > 0) {
         const osc = this.ctx.createOscillator();
         const gain = this.ctx.createGain();
         osc.type = 'square';
         osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
-        
+
         gain.gain.setValueAtTime(0.02, this.ctx.currentTime); // Very low volume
         gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + quarterNote * 0.4);
-        
+
         osc.connect(gain);
         gain.connect(this.ctx.destination);
         osc.start();
         osc.stop(this.ctx.currentTime + quarterNote * 0.4);
       }
-      
+
       step++;
       this.bgmInterval = setTimeout(playStep, quarterNote * 250); // 16th notes
     };
