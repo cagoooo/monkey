@@ -4,27 +4,27 @@
  */
 
 import React, { useEffect, useRef, useState } from 'react';
-import { Building, GameState, Point, CANVAS_WIDTH, CANVAS_HEIGHT, MONKEY_SIZE, GRAVITY, Treasure, ProjectileType, Destruction } from './types';
+import { Building, GameState, Point, CANVAS_WIDTH, CANVAS_HEIGHT, MONKEY_SIZE, GRAVITY, Treasure, ProjectileType, Destruction, ParticleType, Particle, Meteor } from './types';
 import { motion, AnimatePresence } from 'motion/react';
-import { Trophy, Wind, RotateCcw, Play, Maximize, Minimize } from 'lucide-react';
+import { Trophy, Wind, RotateCcw, Play, Maximize, Minimize, Volume2, VolumeX } from 'lucide-react';
 import { soundService } from './services/soundService';
 
 const COLORS = ['#AAAAAA', '#00AAAA', '#AA0000'];
 
 const getGroundY = (x: number, buildings: Building[], destructions: Destruction[]) => {
   const building = buildings.find(b => x >= b.x && x <= b.x + b.width);
-  if (!building) return CANVAS_HEIGHT - 20;
+  if (!building) return CANVAS_HEIGHT - 8.75;
 
   // Start checking from the top of the building downwards
   for (let y = building.y; y < CANVAS_HEIGHT; y += 2) {
-    const inHole = destructions.some(d => 
+    const inHole = destructions.some(d =>
       Math.sqrt((x - d.pos.x) ** 2 + (y - d.pos.y) ** 2) < d.radius
     );
     if (!inHole) {
-      return y - 20; // Monkey bottom is at y+20, so pos.y is y-20
+      return y - 8.75; // Monkey bottom is at y+8.75, so pos.y is y-8.75
     }
   }
-  return CANVAS_HEIGHT - 20;
+  return CANVAS_HEIGHT - 8.75;
 };
 
 const BananaIcon = ({ size = 16 }: { size?: number }) => (
@@ -102,13 +102,13 @@ const OrbitingBanana = ({ delay = 0, rx = 300, ry = 100, speed = 5 }: { delay?: 
         marginTop: -20,
       }}
     >
-      <motion.div 
+      <motion.div
         className="w-full h-full flex items-center justify-center"
         animate={{ rotate: [0, 360] }}
         transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
       >
         <svg width="40" height="40" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M19.5 3.5C18.5 2.5 16 2.5 14 4.5C12 6.5 11 9.5 11 12.5C11 15.5 12 18.5 14 20.5C16 22.5 18.5 22.5 19.5 21.5C20.5 20.5 20.5 18 18.5 16C16.5 14 13.5 13 10.5 13C7.5 13 4.5 14 2.5 16C0.5 18 0.5 20.5 1.5 21.5" stroke="#FACC15" strokeWidth="2.5" strokeLinecap="round"/>
+          <path d="M19.5 3.5C18.5 2.5 16 2.5 14 4.5C12 6.5 11 9.5 11 12.5C11 15.5 12 18.5 14 20.5C16 22.5 18.5 22.5 19.5 21.5C20.5 20.5 20.5 18 18.5 16C16.5 14 13.5 13 10.5 13C7.5 13 4.5 14 2.5 16C0.5 18 0.5 20.5 1.5 21.5" stroke="#FACC15" strokeWidth="2.5" strokeLinecap="round" />
         </svg>
       </motion.div>
     </motion.div>
@@ -121,7 +121,7 @@ const BananaOrbit = () => {
   const rx = 340;
   const ry = 100;
   const speed = 6;
-  
+
   return (
     <div className="absolute inset-0 pointer-events-none">
       <OrbitingBanana delay={0} rx={rx} ry={ry} speed={speed} />
@@ -142,8 +142,127 @@ export default function App() {
   const [p2NameInput, setP2NameInput] = useState('玩家二');
   const [message, setMessage] = useState<string>('');
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isMuted, setIsMuted] = useState(soundService.isMuted());
   const lastWindowToggle = useRef<number>(0);
   const nextGameStarter = useRef<1 | 2>(1);
+
+  const calculateScore = (hitPos: Point, shooterPos: Point, targetPos: Point) => {
+    const distBetween = Math.sqrt((shooterPos.x - targetPos.x) ** 2 + (shooterPos.y - targetPos.y) ** 2);
+    if (distBetween < 1) return 0;
+    const distToTarget = Math.sqrt((hitPos.x - targetPos.x) ** 2 + (hitPos.y - targetPos.y) ** 2);
+    const distToSelf = Math.sqrt((hitPos.x - shooterPos.x) ** 2 + (hitPos.y - shooterPos.y) ** 2);
+    if (distToSelf < 30) return 0;
+    return Math.max(0, Math.floor(100 * (1 - distToTarget / distBetween)));
+  };
+
+  const handleTurnTransition = (prev: GameState, next: GameState): GameState => {
+    const nextPlayer = prev.currentPlayer === 1 ? 2 : 1;
+
+    const p1GroundY = getGroundY(next.player1Pos.x, next.buildings, next.destructions);
+    const p2GroundY = getGroundY(next.player2Pos.x, next.buildings, next.destructions);
+
+    const p1IsOnGround = p1GroundY >= CANVAS_HEIGHT - 10;
+    const p2IsOnGround = p2GroundY >= CANVAS_HEIGHT - 10;
+
+    let p1Turns = next.p1GroundTurns;
+    let p2Turns = next.p2GroundTurns;
+
+    // Update turns based on current ground status
+    if (p1IsOnGround) {
+      if (nextPlayer === 1) p1Turns++;
+    } else {
+      p1Turns = 0;
+    }
+
+    if (p2IsOnGround) {
+      if (nextPlayer === 2) p2Turns++;
+    } else {
+      p2Turns = 0;
+    }
+
+    if (p1Turns >= 5) {
+      const explosionPos = next.player1Pos;
+      const newScores: [number, number] = [next.scores[0], next.scores[1]];
+      newScores[1]++;
+      soundService.playExplosion();
+      return {
+        ...next,
+        status: 'exploding',
+        winner: 2,
+        scores: newScores,
+        explosion: {
+          pos: explosionPos,
+          radius: 0,
+          maxRadius: 300,
+          type: 'giant'
+        },
+        shake: 50,
+        p1GroundTurns: 0,
+        p2GroundTurns: 0,
+        banana: undefined
+      };
+    }
+
+    if (p2Turns >= 5) {
+      const explosionPos = next.player2Pos;
+      const newScores: [number, number] = [next.scores[0], next.scores[1]];
+      newScores[0]++;
+      soundService.playExplosion();
+      return {
+        ...next,
+        status: 'exploding',
+        winner: 1,
+        scores: newScores,
+        explosion: {
+          pos: explosionPos,
+          radius: 0,
+          maxRadius: 300,
+          type: 'giant'
+        },
+        shake: 50,
+        p1GroundTurns: 0,
+        p2GroundTurns: 0,
+        banana: undefined
+      };
+    }
+
+    // Spawn new treasure for next round
+    const newTreasures: Treasure[] = [];
+    let treasureType: 'giant' | 'acid' | 'beam' | 'meteor';
+    const rand = Math.random();
+    if (next.roundCount >= 9) {
+      if (rand < 0.07) treasureType = 'meteor';
+      else if (rand < 0.38) treasureType = 'giant';
+      else if (rand < 0.69) treasureType = 'acid';
+      else treasureType = 'beam';
+    } else {
+      if (rand < 0.07) treasureType = 'meteor';
+      else if (rand < 0.535) treasureType = 'giant';
+      else treasureType = 'acid';
+    }
+    newTreasures.push({
+      id: Date.now(),
+      pos: {
+        x: 100 + Math.random() * (CANVAS_WIDTH - 200),
+        y: 50 + Math.random() * 250
+      },
+      type: treasureType,
+      active: true
+    });
+
+    return {
+      ...next,
+      status: 'aiming',
+      currentPlayer: nextPlayer,
+      p1GroundTurns: p1Turns,
+      p2GroundTurns: p2Turns,
+      p1Struggling: p1Turns >= 4,
+      p2Struggling: p2Turns >= 4,
+      treasures: newTreasures,
+      banana: undefined,
+      explosion: undefined
+    };
+  };
 
   useEffect(() => {
     const handleFullscreenChange = () => {
@@ -151,6 +270,13 @@ export default function App() {
     };
     document.addEventListener('fullscreenchange', handleFullscreenChange);
     return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+  }, []);
+
+  useEffect(() => {
+    // Stop BGM on unmount
+    return () => {
+      soundService.stopBGM();
+    };
   }, []);
 
   const toggleFullscreen = () => {
@@ -163,6 +289,12 @@ export default function App() {
     }
   };
 
+  const toggleMute = () => {
+    const newMuted = !isMuted;
+    setIsMuted(newMuted);
+    soundService.setMuted(newMuted);
+  };
+
   // Initialize Game
   const initGame = (customGravity?: number, resetScores: boolean = false) => {
     const buildings: Building[] = [];
@@ -170,7 +302,7 @@ export default function App() {
     while (currentX < CANVAS_WIDTH) {
       const width = 60 + Math.random() * 60;
       const height = 100 + Math.random() * 300;
-      
+
       const rows = Math.floor(height / 15);
       const cols = Math.floor(width / 10);
       const windows: boolean[][] = [];
@@ -199,16 +331,20 @@ export default function App() {
     const p1B = buildings[p1BuildingIdx];
     const p2B = buildings[p2BuildingIdx];
 
-    // Position so feet are on top (feet bottom is pos.y + 20)
-    const p1Pos = { x: p1B.x + p1B.width / 2, y: p1B.y - 20 };
-    const p2Pos = { x: p2B.x + p2B.width / 2, y: p2B.y - 20 };
+    // Position so feet are on top (feet bottom is pos.y + 8.75)
+    const p1Pos = { x: p1B.x + p1B.width / 2, y: p1B.y - 8.75 };
+    const p2Pos = { x: p2B.x + p2B.width / 2, y: p2B.y - 8.75 };
 
     const starter = nextGameStarter.current;
     nextGameStarter.current = starter === 1 ? 2 : 1;
 
     // Spawn random treasure
     const treasures: Treasure[] = [];
-    const treasureType = Math.random() > 0.5 ? 'giant' : 'acid';
+    const rand = Math.random();
+    let treasureType: 'giant' | 'acid' | 'beam' | 'meteor';
+    if (rand < 0.07) treasureType = 'meteor';
+    else if (rand < 0.535) treasureType = 'giant';
+    else treasureType = 'acid';
     treasures.push({
       id: Date.now(),
       pos: {
@@ -221,11 +357,15 @@ export default function App() {
 
     setGameState(prev => {
       const g = typeof customGravity === 'number' ? customGravity : (prev?.gravity || 0.25);
+      // If resetScores is true, it's a full game restart (or sun explosion)
+      const shouldResetSun = resetScores || (prev?.sunHits || 0) >= 5;
+
       return {
         player1Pos: p1Pos,
         player2Pos: p2Pos,
         sunPos: { x: CANVAS_WIDTH / 2 + (Math.random() * 100 - 50), y: 50 + Math.random() * 50 },
-        sunState: 'normal',
+        sunState: shouldResetSun ? 'normal' : (prev?.sunState || 'normal'),
+        sunHits: shouldResetSun ? 0 : (prev?.sunHits || 0),
         buildings,
         destructions: [],
         particles: [],
@@ -243,6 +383,12 @@ export default function App() {
         treasures,
         player1Projectile: prev?.player1Projectile || 'normal',
         player2Projectile: prev?.player2Projectile || 'normal',
+        roundHistory: resetScores ? { p1: [], p2: [] } : (prev?.roundHistory || { p1: [], p2: [] }),
+        currentRoundPoints: [0, 0],
+        p1GroundTurns: 0,
+        p2GroundTurns: 0,
+        p1Struggling: false,
+        p2Struggling: false,
       };
     });
     const pNames = [p1NameInput || '玩家一', p2NameInput || '玩家二'];
@@ -255,6 +401,13 @@ export default function App() {
     // Scale 9.8 to 0.25
     const scaledG = gVal * (0.25 / 9.8);
     initGame(scaledG);
+
+    // Enter fullscreen
+    if (!document.fullscreenElement) {
+      gameContainerRef.current?.requestFullscreen().catch(err => {
+        console.error(`Error attempting to enable full-screen mode: ${err.message}`);
+      });
+    }
   };
 
   const handleResetToStart = () => {
@@ -277,6 +430,17 @@ export default function App() {
 
   // Sound Effects Trigger
   useEffect(() => {
+    if (showStartScreen) {
+      soundService.playIntro();
+      soundService.stopBGM();
+    } else if (gameState) {
+      soundService.startBGM();
+    } else {
+      soundService.stopBGM();
+    }
+  }, [showStartScreen, !!gameState]);
+
+  useEffect(() => {
     if (!gameState) return;
 
     if (gameState.status === 'throwing') {
@@ -294,12 +458,18 @@ export default function App() {
       const timer = setTimeout(() => {
         setGameState(prev => {
           if (!prev) return null;
+
+          const newHistory = {
+            p1: [...prev.roundHistory.p1, prev.currentRoundPoints[0]],
+            p2: [...prev.roundHistory.p2, prev.currentRoundPoints[1]]
+          };
+
           const winner1 = prev.scores[0] >= 2;
           const winner2 = prev.scores[1] >= 2;
           if (winner1 || winner2) {
-            return { ...prev, status: 'tournamentOver', tournamentWinner: winner1 ? 1 : 2 };
+            return { ...prev, status: 'tournamentOver', tournamentWinner: winner1 ? 1 : 2, roundHistory: newHistory };
           }
-          return { ...prev, status: 'roundOver' };
+          return { ...prev, status: 'roundOver', roundHistory: newHistory };
         });
       }, 2000);
       return () => clearTimeout(timer);
@@ -318,12 +488,33 @@ export default function App() {
 
         // Update Particles
         next.particles = prev.particles
-          .map(p => ({
-            ...p,
-            pos: { x: p.pos.x + p.vel.x, y: p.pos.y + p.vel.y },
-            vel: { x: p.vel.x * 0.98, y: p.vel.y + 0.1 },
-            life: p.life - 1,
-          }))
+          .map(p => {
+            let nextVel = { ...p.vel };
+            let nextPos = { x: p.pos.x + p.vel.x, y: p.pos.y + p.vel.y };
+            let nextRotation = (p.rotation || 0) + (p.rotationVel || 0);
+
+            if (p.type === 'smoke') {
+              nextVel.x *= 0.95;
+              nextVel.y -= 0.05; // Smoke rises
+            } else if (p.type === 'spark') {
+              nextVel.x *= 0.99;
+              nextVel.y += 0.05; // Sparks are light
+            } else if (p.type === 'debris') {
+              nextVel.x *= 0.99;
+              nextVel.y += 0.2; // Debris is heavy
+            } else {
+              nextVel.x *= 0.98;
+              nextVel.y += 0.1; // Normal gravity
+            }
+
+            return {
+              ...p,
+              pos: nextPos,
+              vel: nextVel,
+              rotation: nextRotation,
+              life: p.life - 1,
+            };
+          })
           .filter(p => p.life > 0);
 
         // Update Shake
@@ -340,16 +531,167 @@ export default function App() {
           next.player2Pos = { ...prev.player2Pos, y: Math.min(prev.player2Pos.y + 4, p2TargetY) };
         }
 
+        // Update Sun (Falling)
+        if (prev.sunState === 'falling') {
+          next.sunPos = { ...prev.sunPos, y: prev.sunPos.y + 8 };
+
+          const groundY = getGroundY(next.sunPos.x, prev.buildings, prev.destructions);
+
+          // Explode if hit building or ground
+          if (next.sunPos.y >= groundY - 20 || next.sunPos.y > CANVAS_HEIGHT - 50) {
+            // Massive explosion!
+            const explosionPos = { x: next.sunPos.x, y: Math.min(next.sunPos.y, groundY) };
+            const newParticles = Array.from({ length: 300 }).map((_, i) => ({
+              id: Math.random(),
+              pos: { ...explosionPos },
+              vel: { x: (Math.random() - 0.5) * 40, y: (Math.random() - 0.5) * 40 },
+              life: 100 + Math.random() * 50,
+              maxLife: 150,
+              color: '#FFCC00',
+              size: 5 + Math.random() * 10,
+            }));
+
+            // Destroy everything
+            next.destructions = [...prev.destructions, { pos: explosionPos, radius: 1000 }];
+            next.particles = [...next.particles, ...newParticles];
+            next.shake = 100;
+            next.status = 'exploding';
+            next.explosion = {
+              pos: explosionPos,
+              radius: 0,
+              maxRadius: 1000,
+              type: 'giant'
+            };
+            next.sunState = 'normal';
+            next.sunHits = 0;
+            soundService.playHit();
+            soundService.playExplosion();
+          }
+        }
+
         // Update Windows every 2 seconds
         const now = Date.now();
         if (now - lastWindowToggle.current > 2000) {
           lastWindowToggle.current = now;
           next.buildings = prev.buildings.map(b => ({
             ...b,
-            windows: b.windows.map(row => 
+            windows: b.windows.map(row =>
               row.map(w => (Math.random() > 0.05 ? w : !w))
             ),
           }));
+        }
+
+        if (prev.status === 'meteorShower' && prev.meteorShower) {
+          const elapsed = Date.now() - prev.meteorShower.startTime;
+
+          if (elapsed > prev.meteorShower.duration) {
+            return handleTurnTransition(prev, next);
+          }
+
+          // Warning period (first 1s)
+          if (elapsed < 1000) {
+            return next;
+          }
+
+          // Falling period
+          const activeMeteors = [...prev.meteorShower.meteors];
+          if (Math.random() > 0.6) {
+            activeMeteors.push({
+              id: Math.random(),
+              pos: {
+                x: prev.meteorShower.centerX + (Math.random() - 0.5) * 150 * 5,
+                y: -50
+              },
+              vel: {
+                x: (Math.random() - 0.5) * 4,
+                y: 12 + Math.random() * 8
+              }
+            });
+          }
+
+          const updatedMeteors: Meteor[] = [];
+          const newDestructions = [...prev.destructions];
+          let newParticles = [...next.particles];
+
+          for (const m of activeMeteors) {
+            const nextPos = {
+              x: m.pos.x + m.vel.x,
+              y: m.pos.y + m.vel.y
+            };
+
+            // Check building collision
+            let hitBuilding = false;
+            for (const b of prev.buildings) {
+              if (nextPos.x >= b.x && nextPos.x <= b.x + b.width && nextPos.y >= b.y) {
+                const inHole = newDestructions.some(d =>
+                  Math.sqrt((nextPos.x - d.pos.x) ** 2 + (nextPos.y - d.pos.y) ** 2) < d.radius
+                );
+
+                if (!inHole) {
+                  hitBuilding = true;
+                  newDestructions.push({ pos: nextPos, radius: 25 });
+
+                  // Spawn some particles
+                  const pCount = 15;
+                  for (let i = 0; i < pCount; i++) {
+                    newParticles.push({
+                      id: Math.random(),
+                      pos: { ...nextPos },
+                      vel: { x: (Math.random() - 0.5) * 12, y: (Math.random() - 0.5) * 12 - 5 },
+                      life: 30 + Math.random() * 30,
+                      maxLife: 60,
+                      color: b.color,
+                      size: 2 + Math.random() * 4,
+                      type: 'debris'
+                    });
+                  }
+                  soundService.playHit();
+                  break;
+                }
+              }
+            }
+
+            if (!hitBuilding && nextPos.y < CANVAS_HEIGHT + 50) {
+              updatedMeteors.push({ ...m, pos: nextPos });
+            }
+          }
+
+          // Check for hits
+          const p1Hit = (prev.meteorShower.protectedPlayer !== 1) && updatedMeteors.some(m =>
+            Math.sqrt((m.pos.x - prev.player1Pos.x) ** 2 + (m.pos.y - prev.player1Pos.y) ** 2) < MONKEY_SIZE
+          );
+          const p2Hit = (prev.meteorShower.protectedPlayer !== 2) && updatedMeteors.some(m =>
+            Math.sqrt((m.pos.x - prev.player2Pos.x) ** 2 + (m.pos.y - prev.player2Pos.y) ** 2) < MONKEY_SIZE
+          );
+
+          if (p1Hit || p2Hit) {
+            const winner = p1Hit ? 2 : 1;
+            const newScores: [number, number] = [prev.scores[0], prev.scores[1]];
+            newScores[winner - 1]++;
+            const newPoints = [...prev.currentRoundPoints] as [number, number];
+            newPoints[winner - 1] += 100;
+            newPoints[p1Hit ? 0 : 1] = 0;
+            return {
+              ...next,
+              status: 'celebrating',
+              winner,
+              scores: newScores,
+              currentRoundPoints: newPoints,
+              meteorShower: undefined,
+              destructions: newDestructions,
+              particles: newParticles
+            };
+          }
+
+          return {
+            ...next,
+            destructions: newDestructions,
+            particles: newParticles,
+            meteorShower: {
+              ...prev.meteorShower,
+              meteors: updatedMeteors
+            }
+          };
         }
 
         if (prev.status === 'aiming' || prev.status === 'roundOver' || prev.status === 'tournamentOver') {
@@ -369,16 +711,16 @@ export default function App() {
 
           // Collision detection
           // 0. Hit Treasure
-          const treasureIdx = next.treasures.findIndex(t => 
+          const treasureIdx = next.treasures.findIndex(t =>
             t.active && Math.sqrt((newPos.x - t.pos.x) ** 2 + (newPos.y - t.pos.y) ** 2) < 35
           );
           if (treasureIdx !== -1) {
             const hitTreasure = next.treasures[treasureIdx];
             // Update treasures array without mutation
-            next.treasures = next.treasures.map((t, i) => 
+            next.treasures = next.treasures.map((t, i) =>
               i === treasureIdx ? { ...t, active: false } : t
             );
-            
+
             if (prev.currentPlayer === 1) {
               next.player1Projectile = hitTreasure.type;
             } else {
@@ -389,82 +731,107 @@ export default function App() {
 
           // 1. Out of bounds
           if (newPos.x < 0 || newPos.x > CANVAS_WIDTH || newPos.y > CANVAS_HEIGHT) {
-            // Spawn new treasure for next round
-            const newTreasures: Treasure[] = [];
-            const treasureType = Math.random() > 0.5 ? 'giant' : 'acid';
-            newTreasures.push({
-              id: Date.now(),
-              pos: {
-                x: 100 + Math.random() * (CANVAS_WIDTH - 200),
-                y: 50 + Math.random() * 250
-              },
-              type: treasureType,
-              active: true
-            });
-
-            return { 
-              ...next, 
-              status: 'aiming', 
-              banana: undefined, 
-              currentPlayer: prev.currentPlayer === 1 ? 2 : 1, 
-              sunState: 'normal',
-              treasures: newTreasures
-            };
+            return handleTurnTransition(prev, next);
           }
 
           // 1.5 Hit Sun
           const distToSun = Math.sqrt((newPos.x - prev.sunPos.x) ** 2 + (newPos.y - prev.sunPos.y) ** 2);
           let newSunState = prev.sunState;
-          if (distToSun < 25) {
-            newSunState = 'surprised';
+          let newSunHits = prev.sunHits;
+          let hasHitSun = prev.banana.hasHitSun;
+
+          if (distToSun < 35 && !hasHitSun && prev.sunState !== 'falling') {
+            newSunHits = prev.sunHits + 1;
+            hasHitSun = true;
+            soundService.playSunHit();
+            if (newSunHits === 1) newSunState = 'surprised';
+            else if (newSunHits === 2) newSunState = 'sunglasses';
+            else if (newSunHits === 3) newSunState = 'dead';
+            else if (newSunHits === 4) newSunState = 'skull';
+            else if (newSunHits >= 5) newSunState = 'falling';
           }
 
           // 2. Hit Monkey
           const targetMonkey = prev.currentPlayer === 1 ? prev.player2Pos : prev.player1Pos;
           const selfMonkey = prev.currentPlayer === 1 ? prev.player1Pos : prev.player2Pos;
-          
+
           const distToTarget = Math.sqrt((newPos.x - targetMonkey.x) ** 2 + (newPos.y - targetMonkey.y) ** 2);
           const distToSelf = Math.sqrt((newPos.x - selfMonkey.x) ** 2 + (newPos.y - selfMonkey.y) ** 2);
 
           if (distToTarget < MONKEY_SIZE || (distToSelf < MONKEY_SIZE && prev.banana.trail.length > 10)) {
             const isSelfHit = distToSelf < MONKEY_SIZE;
             const newScores: [number, number] = [prev.scores[0], prev.scores[1]];
-            
+
             if (isSelfHit) {
               // Self hit: opponent wins immediately
               const winner = prev.currentPlayer === 1 ? 2 : 1;
               newScores[winner - 1]++;
+              const newPoints = [...prev.currentRoundPoints] as [number, number];
+              newPoints[prev.currentPlayer - 1] = 0;
               return {
                 ...next,
                 status: 'celebrating',
                 winner,
                 scores: newScores,
+                currentRoundPoints: newPoints,
                 banana: undefined,
-                sunState: 'normal'
               };
             } else {
               newScores[prev.currentPlayer - 1]++;
             }
 
+            const newPoints = [...prev.currentRoundPoints] as [number, number];
+            newPoints[prev.currentPlayer - 1] += 100;
+
             // Generate Particles
             const particleCount = prev.banana.type === 'giant' ? 150 : (prev.banana.type === 'acid' ? 100 : 60);
-            const newParticles = Array.from({ length: particleCount }).map((_, i) => ({
-              id: Math.random(),
-              pos: { ...newPos },
-              vel: { x: (Math.random() - 0.5) * 20, y: (Math.random() - 0.5) * 20 },
-              life: 50 + Math.random() * 40,
-              maxLife: 90,
-              color: prev.banana.type === 'acid' ? '#00FF00' : '#FFCC99',
-              size: 2 + Math.random() * 6,
-            }));
+            const newParticles: Particle[] = Array.from({ length: particleCount }).flatMap((_, i) => {
+              const base = {
+                id: Math.random(),
+                pos: { ...newPos },
+                vel: { x: (Math.random() - 0.5) * 20, y: (Math.random() - 0.5) * 20 },
+                life: 50 + Math.random() * 40,
+                maxLife: 90,
+                color: prev.banana.type === 'acid' ? '#00FF00' : '#FFCC99',
+                size: 2 + Math.random() * 6,
+                type: 'normal' as ParticleType
+              };
 
-            return { 
-              ...next, 
-              status: 'exploding', 
-              scores: newScores, 
-              explosion: { 
-                pos: newPos, 
-                radius: 0, 
+              const results: Particle[] = [base];
+
+              if (Math.random() > 0.6) {
+                results.push({
+                  ...base,
+                  id: Math.random(),
+                  color: 'rgba(100, 100, 100, 0.5)',
+                  type: 'smoke' as ParticleType,
+                  size: 10 + Math.random() * 10,
+                  vel: { x: (Math.random() - 0.5) * 5, y: (Math.random() - 0.5) * 5 - 2 }
+                });
+              }
+
+              if (Math.random() > 0.8) {
+                results.push({
+                  ...base,
+                  id: Math.random(),
+                  color: '#FFFF00',
+                  type: 'spark' as ParticleType,
+                  size: 1 + Math.random() * 2,
+                  vel: { x: (Math.random() - 0.5) * 30, y: (Math.random() - 0.5) * 30 }
+                });
+              }
+
+              return results;
+            });
+
+            return {
+              ...next,
+              status: 'exploding',
+              scores: newScores,
+              currentRoundPoints: newPoints,
+              explosion: {
+                pos: newPos,
+                radius: 0,
                 maxRadius: prev.banana.type === 'giant' ? 350 : (prev.banana.type === 'acid' ? 180 : 40),
                 type: prev.banana.type
               },
@@ -476,32 +843,95 @@ export default function App() {
           // 3. Hit Building
           for (const b of prev.buildings) {
             if (newPos.x >= b.x && newPos.x <= b.x + b.width && newPos.y >= b.y) {
-              const inHole = prev.destructions.some(d => 
+              const inHole = prev.destructions.some(d =>
                 Math.sqrt((newPos.x - d.pos.x) ** 2 + (newPos.y - d.pos.y) ** 2) < d.radius
               );
-              
+
               if (!inHole) {
                 // Generate Particles
-                const particleCount = prev.banana.type === 'giant' ? 100 : (prev.banana.type === 'acid' ? 80 : 40);
-                const newParticles = Array.from({ length: particleCount }).map((_, i) => ({
-                  id: Math.random(),
-                  pos: { ...newPos },
-                  vel: { x: (Math.random() - 0.5) * 15, y: (Math.random() - 0.5) * 15 },
-                  life: 40 + Math.random() * 30,
-                  maxLife: 70,
-                  color: prev.banana.type === 'acid' ? '#00FF00' : b.color,
-                  size: 2 + Math.random() * 5,
-                }));
+                const particleCount = prev.banana.type === 'giant' ? 120 : (prev.banana.type === 'acid' ? 100 : 40);
+                const newParticles: Particle[] = Array.from({ length: particleCount }).flatMap((_, i) => {
+                  const isAcid = prev.banana.type === 'acid';
+                  const isGiant = prev.banana.type === 'giant';
 
-                return { 
-                  ...next, 
-                  status: 'exploding', 
-                  explosion: { 
-                    pos: newPos, 
-                    radius: 0, 
+                  const base = {
+                    id: Math.random(),
+                    pos: { ...newPos },
+                    vel: {
+                      x: (Math.random() - 0.5) * (isGiant ? 25 : 15),
+                      y: (Math.random() - 0.5) * (isGiant ? 25 : 15)
+                    },
+                    life: (isAcid ? 80 : 40) + Math.random() * 40,
+                    maxLife: (isAcid ? 120 : 80),
+                    color: isAcid ? '#00FF00' : (isGiant ? '#FFD700' : b.color),
+                    size: (isGiant ? 4 : 2) + Math.random() * 5,
+                    sparkle: isGiant && Math.random() > 0.5,
+                    type: 'normal' as ParticleType
+                  };
+
+                  const results: Particle[] = [base];
+
+                  // Add debris
+                  if (Math.random() > 0.4) {
+                    results.push({
+                      ...base,
+                      id: Math.random(),
+                      color: b.color,
+                      type: 'debris' as ParticleType,
+                      size: 3 + Math.random() * 5,
+                      rotation: Math.random() * Math.PI * 2,
+                      rotationVel: (Math.random() - 0.5) * 0.5,
+                      vel: { x: (Math.random() - 0.5) * 12, y: (Math.random() - 0.5) * 12 - 5 }
+                    });
+                  }
+
+                  // Add smoke
+                  if (Math.random() > 0.6) {
+                    results.push({
+                      ...base,
+                      id: Math.random(),
+                      color: 'rgba(150, 150, 150, 0.4)',
+                      type: 'smoke' as ParticleType,
+                      size: 15 + Math.random() * 15,
+                      vel: { x: (Math.random() - 0.5) * 4, y: (Math.random() - 0.5) * 4 - 3 }
+                    });
+                  }
+
+                  return results;
+                });
+
+                if (prev.banana.type === 'meteor') {
+                  return {
+                    ...next,
+                    status: 'meteorShower',
+                    meteorShower: {
+                      centerX: newPos.x,
+                      startTime: Date.now(),
+                      duration: 4000, // 1s warning + 3s falling
+                      meteors: [],
+                      protectedPlayer: prev.currentPlayer
+                    },
+                    banana: undefined,
+                    explosion: undefined,
+                    particles: [...next.particles, ...newParticles],
+                    shake: 50
+                  };
+                }
+
+                return {
+                  ...next,
+                  status: 'exploding',
+                  explosion: {
+                    pos: newPos,
+                    radius: 0,
                     maxRadius: prev.banana.type === 'acid' ? 150 : (prev.banana.type === 'giant' ? 300 : 30),
                     type: prev.banana.type
                   },
+                  currentRoundPoints: (() => {
+                    const p = [...prev.currentRoundPoints] as [number, number];
+                    p[prev.currentPlayer - 1] += calculateScore(newPos, selfMonkey, targetMonkey);
+                    return p;
+                  })(),
                   destructions: [...prev.destructions, { pos: newPos, radius: prev.banana.type === 'acid' ? 80 : (prev.banana.type === 'giant' ? 150 : 15) }],
                   particles: [...next.particles, ...newParticles],
                   shake: prev.banana.type === 'normal' ? 15 : 45
@@ -510,50 +940,63 @@ export default function App() {
             }
           }
 
+          // Add weapon-specific trail particles
+          let weaponParticles: any[] = [];
+          if (prev.banana.type === 'acid' && Math.random() > 0.5) {
+            weaponParticles.push({
+              id: Math.random(),
+              pos: { ...newPos },
+              vel: { x: (Math.random() - 0.5) * 2, y: (Math.random() - 0.5) * 2 },
+              life: 20 + Math.random() * 20,
+              maxLife: 40,
+              color: '#00FF00',
+              size: 2 + Math.random() * 3,
+            });
+          } else if (prev.banana.type === 'giant' && Math.random() > 0.3) {
+            weaponParticles.push({
+              id: Math.random(),
+              pos: { ...newPos },
+              vel: { x: (Math.random() - 0.5) * 1, y: (Math.random() - 0.5) * 1 },
+              life: 30 + Math.random() * 30,
+              maxLife: 60,
+              color: '#FFD700',
+              size: 1 + Math.random() * 2,
+            });
+          }
+
           return {
             ...next,
             sunState: newSunState,
+            sunHits: newSunHits,
+            particles: [...next.particles, ...weaponParticles],
             banana: {
               pos: newPos,
               vel: newVel,
               trail: [...prev.banana.trail, newPos].slice(-20),
               angle: newAngle,
               type: prev.banana.type,
+              hasHitSun: hasHitSun,
             },
           };
         }
 
         if (prev.status === 'exploding' && prev.explosion) {
           if (prev.explosion.radius >= prev.explosion.maxRadius) {
+            if (prev.explosion.maxRadius >= 1000) {
+              // Sun explosion: restart game
+              setTimeout(() => initGame(undefined, true), 1000);
+              return { ...next, status: 'roundOver', explosion: undefined };
+            }
+
             const p1Hit = Math.sqrt((prev.explosion.pos.x - prev.player1Pos.x) ** 2 + (prev.explosion.pos.y - prev.player1Pos.y) ** 2) < MONKEY_SIZE;
             const p2Hit = Math.sqrt((prev.explosion.pos.x - prev.player2Pos.x) ** 2 + (prev.explosion.pos.y - prev.player2Pos.y) ** 2) < MONKEY_SIZE;
 
             if (p1Hit || p2Hit) {
-               const winner = p1Hit ? 2 : 1;
-               return { ...next, status: 'celebrating', winner, explosion: undefined };
+              const winner = p1Hit ? 2 : 1;
+              return { ...next, status: 'celebrating', winner, explosion: undefined };
             }
 
-            // Spawn new treasure for next round
-            const newTreasures: Treasure[] = [];
-            const treasureType = Math.random() > 0.5 ? 'giant' : 'acid';
-            newTreasures.push({
-              id: Date.now(),
-              pos: {
-                x: 100 + Math.random() * (CANVAS_WIDTH - 200),
-                y: 50 + Math.random() * 250
-              },
-              type: treasureType,
-              active: true
-            });
-
-            return {
-              ...next,
-              status: 'aiming',
-              explosion: undefined,
-              banana: undefined,
-              currentPlayer: prev.currentPlayer === 1 ? 2 : 1,
-              treasures: newTreasures
-            };
+            return handleTurnTransition(prev, next);
           }
           return {
             ...next,
@@ -582,6 +1025,8 @@ export default function App() {
     ctx.fillStyle = '#0000AA';
     ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 
+    const time = Date.now() / 1000;
+
     // Apply Screen Shake
     if (gameState.shake > 0) {
       const sx = (Math.random() - 0.5) * gameState.shake;
@@ -590,70 +1035,11 @@ export default function App() {
       ctx.translate(sx, sy);
     }
 
-    // Draw Sun
-    ctx.fillStyle = '#FFFF55';
-    ctx.beginPath();
-    ctx.arc(gameState.sunPos.x, gameState.sunPos.y, 20, 0, Math.PI * 2);
-    ctx.fill();
-    
-    // Draw Center Split Line (Visual Hint)
-    if (gameState.status === 'aiming') {
-      // Highlight active side
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';
-      if (gameState.currentPlayer === 1) {
-        ctx.fillRect(0, 0, CANVAS_WIDTH / 2, CANVAS_HEIGHT);
-      } else {
-        ctx.fillRect(CANVAS_WIDTH / 2, 0, CANVAS_WIDTH / 2, CANVAS_HEIGHT);
-      }
-
-      ctx.setLineDash([5, 5]);
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.moveTo(CANVAS_WIDTH / 2, 0);
-      ctx.lineTo(CANVAS_WIDTH / 2, CANVAS_HEIGHT);
-      ctx.stroke();
-      ctx.setLineDash([]);
-    }
-    
-    // Sun Face
-    ctx.strokeStyle = '#000000';
-    ctx.lineWidth = 1;
-    // Eyes
-    ctx.beginPath();
-    ctx.arc(gameState.sunPos.x - 7, gameState.sunPos.y - 5, 2, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.arc(gameState.sunPos.x + 7, gameState.sunPos.y - 5, 2, 0, Math.PI * 2);
-    ctx.stroke();
-    
-    // Mouth
-    if (gameState.sunState === 'surprised') {
-      ctx.beginPath();
-      ctx.arc(gameState.sunPos.x, gameState.sunPos.y + 7, 5, 0, Math.PI * 2);
-      ctx.stroke();
-    } else {
-      ctx.beginPath();
-      ctx.arc(gameState.sunPos.x, gameState.sunPos.y + 5, 5, 0, Math.PI);
-      ctx.stroke();
-    }
-
-    // Sun rays
-    ctx.strokeStyle = '#FFFF55';
-    ctx.lineWidth = 2;
-    for (let i = 0; i < 8; i++) {
-      const angle = (i * Math.PI) / 4;
-      ctx.beginPath();
-      ctx.moveTo(gameState.sunPos.x + Math.cos(angle) * 25, gameState.sunPos.y + Math.sin(angle) * 25);
-      ctx.lineTo(gameState.sunPos.x + Math.cos(angle) * 35, gameState.sunPos.y + Math.sin(angle) * 35);
-      ctx.stroke();
-    }
-
     // Draw Buildings
     gameState.buildings.forEach(b => {
       ctx.fillStyle = b.color;
       ctx.fillRect(b.x, b.y, b.width, b.height);
-      
+
       // Draw Windows
       const winW = 4;
       const winH = 6;
@@ -661,7 +1047,14 @@ export default function App() {
       const gapY = 15;
       b.windows.forEach((row, r) => {
         row.forEach((isOn, c) => {
-          ctx.fillStyle = isOn ? '#FFFF55' : '#000000';
+          if (isOn) {
+            // Random flicker based on position and time
+            const flicker = Math.sin(time * 2 + (b.x + c) * 0.5 + (b.y + r) * 0.3);
+            const alpha = flicker > 0.8 ? 0.3 : 1.0; // Occasional dimming
+            ctx.fillStyle = `rgba(255, 255, 85, ${alpha})`;
+          } else {
+            ctx.fillStyle = '#000000';
+          }
           ctx.fillRect(b.x + 5 + c * gapX, b.y + 10 + r * gapY, winW, winH);
         });
       });
@@ -675,6 +1068,298 @@ export default function App() {
       ctx.fill();
     });
 
+    // Draw Meteor Shower Warning & Meteors
+    if (gameState.status === 'meteorShower' && gameState.meteorShower) {
+      const elapsed = Date.now() - gameState.meteorShower.startTime;
+      const range = 150 * 5;
+      const startX = gameState.meteorShower.centerX - range / 2;
+
+      // Sky Warning
+      if (elapsed < 1000) {
+        const alpha = Math.sin(elapsed / 100) * 0.3 + 0.3;
+        ctx.fillStyle = `rgba(255, 0, 0, ${alpha})`;
+        ctx.fillRect(startX, 0, range, 100);
+      } else {
+        ctx.fillStyle = 'rgba(255, 0, 0, 0.2)';
+        ctx.fillRect(startX, 0, range, 50);
+      }
+
+      // Meteors
+      gameState.meteorShower.meteors.forEach(m => {
+        ctx.save();
+        ctx.translate(m.pos.x, m.pos.y);
+
+        // Trail
+        const trailGradient = ctx.createLinearGradient(0, 0, -m.vel.x * 5, -m.vel.y * 5);
+        trailGradient.addColorStop(0, 'rgba(255, 69, 0, 0.8)');
+        trailGradient.addColorStop(1, 'transparent');
+        ctx.strokeStyle = trailGradient;
+        ctx.lineWidth = 6;
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.lineTo(-m.vel.x * 5, -m.vel.y * 5);
+        ctx.stroke();
+
+        // Meteor head
+        ctx.fillStyle = '#8B4513';
+        ctx.beginPath();
+        ctx.arc(0, 0, 6, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#FF4500';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        ctx.restore();
+      });
+    }
+
+    // Draw Sun
+    ctx.save();
+    const sunX = gameState.sunPos.x;
+    const sunY = gameState.sunPos.y;
+
+    // Breathing effect for normal sun
+    const breathing = (gameState.sunState === 'normal' || gameState.sunState === 'surprised') ? Math.sin(time * 3) * 1.2 : 0;
+    const baseRadius = 20 + breathing;
+
+    // Sun rays (animated rotation for non-skull)
+    if (gameState.sunState !== 'skull') {
+      ctx.strokeStyle = '#FFFF55';
+      ctx.lineWidth = 3;
+      const rayRotation = time * 0.5;
+      for (let i = 0; i < 12; i++) {
+        const angle = (i * Math.PI) / 6 + rayRotation;
+        // Rays also pulse slightly
+        const rayPulse = (gameState.sunState === 'normal' || gameState.sunState === 'surprised') ? Math.sin(time * 3 + 0.5) * 3 : 0;
+        const rayLen = gameState.sunState === 'falling' ? 45 : 35 + rayPulse;
+        ctx.beginPath();
+        ctx.moveTo(sunX + Math.cos(angle) * (baseRadius + 5), sunY + Math.sin(angle) * (baseRadius + 5));
+        ctx.lineTo(sunX + Math.cos(angle) * rayLen, sunY + Math.sin(angle) * rayLen);
+        ctx.stroke();
+      }
+    }
+
+    // Main Sun Body
+    if (gameState.sunState === 'skull') {
+      // Draw Detailed Skull
+      ctx.fillStyle = '#F0F0F0';
+      // Subtle gradient for depth
+      const grad = ctx.createRadialGradient(sunX - 5, sunY - 5, 5, sunX, sunY, 25);
+      grad.addColorStop(0, '#FFFFFF');
+      grad.addColorStop(1, '#D0D0D0');
+      ctx.fillStyle = grad;
+
+      ctx.shadowBlur = 15;
+      ctx.shadowColor = 'rgba(0,0,0,0.3)';
+      ctx.beginPath();
+      ctx.arc(sunX, sunY, 22, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+
+      // Eye Sockets
+      ctx.fillStyle = '#1a1a1a';
+      ctx.beginPath();
+      ctx.ellipse(sunX - 8, sunY - 5, 6, 8, 0.2, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.ellipse(sunX + 8, sunY - 5, 6, 8, -0.2, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Faint red glow in eyes
+      ctx.fillStyle = 'rgba(255, 0, 0, 0.2)';
+      ctx.beginPath();
+      ctx.arc(sunX - 8, sunY - 3, 2, 0, Math.PI * 2);
+      ctx.arc(sunX + 8, sunY - 3, 2, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Nose Hole
+      ctx.fillStyle = '#1a1a1a';
+      ctx.beginPath();
+      ctx.moveTo(sunX, sunY + 3);
+      ctx.lineTo(sunX - 3, sunY + 8);
+      ctx.lineTo(sunX + 3, sunY + 8);
+      ctx.closePath();
+      ctx.fill();
+
+      // Teeth/Jaw
+      ctx.strokeStyle = '#1a1a1a';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(sunX - 10, sunY + 14);
+      ctx.lineTo(sunX + 10, sunY + 14);
+      ctx.stroke();
+      for (let i = -8; i <= 8; i += 4) {
+        ctx.beginPath();
+        ctx.moveTo(sunX + i, sunY + 10);
+        ctx.lineTo(sunX + i, sunY + 18);
+        ctx.stroke();
+      }
+
+      // Cracks
+      ctx.strokeStyle = 'rgba(0,0,0,0.4)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      // Top crack
+      ctx.moveTo(sunX - 5, sunY - 20);
+      ctx.lineTo(sunX - 2, sunY - 15);
+      ctx.lineTo(sunX - 6, sunY - 12);
+      // Side crack
+      ctx.moveTo(sunX + 15, sunY - 10);
+      ctx.lineTo(sunX + 10, sunY - 5);
+      ctx.lineTo(sunX + 12, sunY + 2);
+      // Bottom crack
+      ctx.moveTo(sunX - 12, sunY + 10);
+      ctx.lineTo(sunX - 15, sunY + 15);
+      ctx.stroke();
+    } else {
+      // Normal/Animated Sun
+      const jitter = gameState.sunState === 'falling' ? Math.sin(time * 50) * 3 : 0;
+      ctx.fillStyle = gameState.sunState === 'dead' ? '#DDDD99' : '#FFFF55';
+      ctx.beginPath();
+      ctx.arc(sunX + jitter, sunY + jitter, baseRadius, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Sweat drops for falling state
+      if (gameState.sunState === 'falling') {
+        ctx.fillStyle = '#33AAFF';
+        for (let i = 0; i < 3; i++) {
+          const dropX = sunX + (i === 0 ? -25 : i === 1 ? 25 : 0) + Math.sin(time * 10 + i) * 5;
+          const dropY = sunY - 10 + ((time * 20 + i * 10) % 40);
+          ctx.beginPath();
+          ctx.arc(dropX, dropY, 3, 0, Math.PI * 2);
+          ctx.fill();
+          // Drop tip
+          ctx.beginPath();
+          ctx.moveTo(dropX - 3, dropY);
+          ctx.lineTo(dropX, dropY - 6);
+          ctx.lineTo(dropX + 3, dropY);
+          ctx.fill();
+        }
+      }
+
+      // Eyes
+      ctx.strokeStyle = '#000000';
+      ctx.lineWidth = 2;
+      if (gameState.sunState === 'sunglasses') {
+        // Cool Sunglasses
+        ctx.fillStyle = '#111';
+        ctx.beginPath();
+        ctx.roundRect(sunX - 16, sunY - 8, 14, 10, 2);
+        ctx.roundRect(sunX + 2, sunY - 8, 14, 10, 2);
+        ctx.fill();
+        // Bridge
+        ctx.beginPath();
+        ctx.moveTo(sunX - 2, sunY - 3);
+        ctx.lineTo(sunX + 2, sunY - 3);
+        ctx.stroke();
+        // Reflection
+        ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+        ctx.beginPath();
+        ctx.moveTo(sunX - 14, sunY - 6);
+        ctx.lineTo(sunX - 10, sunY - 2);
+        ctx.moveTo(sunX + 4, sunY - 6);
+        ctx.lineTo(sunX + 8, sunY - 2);
+        ctx.stroke();
+      } else if (gameState.sunState === 'dead') {
+        // X Eyes
+        const drawX = (x: number, y: number) => {
+          ctx.beginPath();
+          ctx.moveTo(x - 5, y - 5); ctx.lineTo(x + 5, y + 5);
+          ctx.moveTo(x + 5, y - 5); ctx.lineTo(x - 5, y + 5);
+          ctx.stroke();
+        };
+        drawX(sunX - 8, sunY - 5);
+        drawX(sunX + 8, sunY - 5);
+      } else if (gameState.sunState === 'falling') {
+        // Panicked Eyes
+        const eyeJitter = Math.sin(time * 40) * 4;
+        ctx.fillStyle = '#FFF';
+        ctx.beginPath();
+        ctx.arc(sunX - 8, sunY - 5, 7, 0, Math.PI * 2);
+        ctx.arc(sunX + 8, sunY - 5, 7, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+        ctx.fillStyle = '#000';
+        ctx.beginPath();
+        ctx.arc(sunX - 8 + eyeJitter, sunY - 5 + eyeJitter, 3, 0, Math.PI * 2);
+        ctx.arc(sunX + 8 - eyeJitter, sunY - 5 - eyeJitter, 3, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Eyebrows
+        ctx.strokeStyle = '#000';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(sunX - 15, sunY - 15 + Math.sin(time * 20) * 2);
+        ctx.lineTo(sunX - 5, sunY - 12);
+        ctx.moveTo(sunX + 15, sunY - 15 + Math.sin(time * 20 + 1) * 2);
+        ctx.lineTo(sunX + 5, sunY - 12);
+        ctx.stroke();
+      } else {
+        // Normal/Surprised
+        const isBlinking = Math.sin(time * 0.5) > 0.98;
+        if (isBlinking && gameState.sunState === 'normal') {
+          ctx.beginPath();
+          ctx.moveTo(sunX - 12, sunY - 5); ctx.lineTo(sunX - 4, sunY - 5);
+          ctx.moveTo(sunX + 4, sunY - 5); ctx.lineTo(sunX + 12, sunY - 5);
+          ctx.stroke();
+        } else {
+          const eyeSize = gameState.sunState === 'surprised' ? 4 : 2;
+          ctx.fillStyle = '#000';
+          ctx.beginPath();
+          ctx.arc(sunX - 8, sunY - 5, eyeSize, 0, Math.PI * 2);
+          ctx.arc(sunX + 8, sunY - 5, eyeSize, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+
+      // Mouth
+      ctx.strokeStyle = '#000';
+      if (gameState.sunState === 'falling') {
+        // Large Screaming Mouth with shake
+        ctx.fillStyle = '#400';
+        const mouthShake = Math.sin(time * 60) * 2;
+        ctx.beginPath();
+        ctx.ellipse(sunX + mouthShake, sunY + 10, 9, 12, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+        // Tongue
+        ctx.fillStyle = '#f55';
+        ctx.beginPath();
+        ctx.arc(sunX + mouthShake, sunY + 18, 5, 0, Math.PI, true);
+        ctx.fill();
+      } else if (gameState.sunState === 'surprised') {
+        ctx.beginPath();
+        ctx.arc(sunX, sunY + 8, 5, 0, Math.PI * 2);
+        ctx.stroke();
+      } else if (gameState.sunState === 'dead') {
+        ctx.beginPath();
+        ctx.moveTo(sunX - 10, sunY + 10);
+        ctx.bezierCurveTo(sunX - 5, sunY + 5, sunX + 5, sunY + 15, sunX + 10, sunY + 10);
+        ctx.stroke();
+      } else {
+        // Smile
+        ctx.beginPath();
+        ctx.arc(sunX, sunY + 5, 8, 0.1 * Math.PI, 0.9 * Math.PI);
+        ctx.stroke();
+      }
+
+      // Sweat drops for falling
+      if (gameState.sunState === 'falling') {
+        ctx.fillStyle = '#AAF';
+        for (let i = 0; i < 3; i++) {
+          const dropX = sunX + Math.sin(time * 10 + i) * 25;
+          const dropY = sunY - 20 - i * 10;
+          ctx.beginPath();
+          ctx.moveTo(dropX, dropY);
+          ctx.lineTo(dropX - 3, dropY + 6);
+          ctx.arc(dropX, dropY + 6, 3, Math.PI, 0, true);
+          ctx.closePath();
+          ctx.fill();
+        }
+      }
+    }
+    ctx.restore();
+
     // Draw Treasures
     gameState.treasures.forEach(t => {
       if (!t.active) return;
@@ -682,19 +1367,19 @@ export default function App() {
       ctx.translate(t.pos.x, t.pos.y);
       const bounce = Math.sin(Date.now() / 200) * 5;
       ctx.translate(0, bounce);
-      
+
       if (t.type === 'giant') {
         // Draw Golden Sun Icon for 10x
         const time = Date.now() / 200;
         ctx.fillStyle = '#FFD700'; // Gold
         ctx.shadowBlur = 15;
         ctx.shadowColor = '#FFD700';
-        
+
         // Draw Sun Shape
         ctx.beginPath();
         ctx.arc(0, 0, 15, 0, Math.PI * 2);
         ctx.fill();
-        
+
         // Rays
         ctx.strokeStyle = '#FFD700';
         ctx.lineWidth = 2;
@@ -705,13 +1390,13 @@ export default function App() {
           ctx.lineTo(Math.cos(angle) * 25, Math.sin(angle) * 25);
           ctx.stroke();
         }
-        
+
         ctx.shadowBlur = 0;
         ctx.fillStyle = '#000000';
         ctx.font = 'bold 10px Arial';
         ctx.textAlign = 'center';
         ctx.fillText('10X', 0, 4);
-      } else {
+      } else if (t.type === 'acid') {
         // Draw Acid Bottle Icon
         ctx.fillStyle = '#00FF00';
         ctx.fillRect(-8, -10, 16, 20);
@@ -721,6 +1406,60 @@ export default function App() {
         ctx.font = 'bold 10px Arial';
         ctx.textAlign = 'center';
         ctx.fillText('ACID', 0, 4);
+      } else if (t.type === 'beam') {
+        // Draw Flashlight Icon
+        ctx.fillStyle = '#444444'; // Dark Gray body
+        ctx.fillRect(-12, -4, 18, 8);
+        ctx.fillStyle = '#666666'; // Head
+        ctx.fillRect(6, -7, 6, 14);
+        ctx.fillStyle = '#FFFF00'; // Lens
+        ctx.fillRect(12, -5, 2, 10);
+
+        // Light beam effect
+        ctx.fillStyle = 'rgba(255, 255, 0, 0.3)';
+        ctx.beginPath();
+        ctx.moveTo(14, -5);
+        ctx.lineTo(30, -15);
+        ctx.lineTo(30, 15);
+        ctx.lineTo(14, 5);
+        ctx.fill();
+
+        ctx.fillStyle = '#FFFFFF';
+        ctx.font = 'bold 8px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText('BEAM', 0, 3);
+      } else if (t.type === 'meteor') {
+        // Draw Irregular Burning Stone
+        ctx.fillStyle = '#8B4513'; // SaddleBrown
+        ctx.beginPath();
+        ctx.moveTo(-10, -10);
+        ctx.lineTo(12, -8);
+        ctx.lineTo(15, 5);
+        ctx.lineTo(5, 15);
+        ctx.lineTo(-12, 10);
+        ctx.lineTo(-15, -5);
+        ctx.closePath();
+        ctx.fill();
+
+        // Fire/Glow
+        ctx.strokeStyle = '#FF4500'; // OrangeRed
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        // Cracks/Details
+        ctx.strokeStyle = '#000000';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(-5, -5);
+        ctx.lineTo(5, 5);
+        ctx.moveTo(5, -5);
+        ctx.lineTo(-5, 5);
+        ctx.stroke();
+
+        ctx.fillStyle = '#FFFFFF';
+        ctx.font = 'bold 8px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText('METEOR', 0, 3);
       }
       ctx.restore();
     });
@@ -729,9 +1468,29 @@ export default function App() {
     gameState.particles.forEach(p => {
       ctx.fillStyle = p.color;
       ctx.globalAlpha = p.life / p.maxLife;
-      ctx.beginPath();
-      ctx.arc(p.pos.x, p.pos.y, p.size, 0, Math.PI * 2);
-      ctx.fill();
+
+      if (p.type === 'debris') {
+        ctx.save();
+        ctx.translate(p.pos.x, p.pos.y);
+        ctx.rotate(p.rotation || 0);
+        ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size);
+        ctx.restore();
+      } else if (p.type === 'smoke') {
+        ctx.beginPath();
+        ctx.arc(p.pos.x, p.pos.y, p.size, 0, Math.PI * 2);
+        ctx.fill();
+      } else if (p.sparkle || p.type === 'spark') {
+        ctx.shadowBlur = 10;
+        ctx.shadowColor = p.color;
+        ctx.beginPath();
+        ctx.arc(p.pos.x, p.pos.y, p.size * 1.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.shadowBlur = 0;
+      } else {
+        ctx.beginPath();
+        ctx.arc(p.pos.x, p.pos.y, p.size, 0, Math.PI * 2);
+        ctx.fill();
+      }
     });
     ctx.globalAlpha = 1.0;
 
@@ -740,11 +1499,11 @@ export default function App() {
       const playerPos = gameState.currentPlayer === 1 ? gameState.player1Pos : gameState.player2Pos;
       const dx = gameState.dragCurrent.x - gameState.dragStart.x;
       const dy = gameState.dragCurrent.y - gameState.dragStart.y;
-      
+
       // Calculate angle and velocity
       const angleRad = Math.atan2(dy, gameState.currentPlayer === 1 ? -dx : dx);
       let angleDeg = Math.round(angleRad * (180 / Math.PI));
-      
+
       const dist = Math.sqrt(dx * dx + dy * dy);
       const velocity = Math.min(dist * 2.55, 255);
 
@@ -765,20 +1524,22 @@ export default function App() {
       ctx.fillText(`${angleDeg}°`, playerPos.x, playerPos.y - 40);
       ctx.fillText(`力: ${Math.round(velocity)}`, playerPos.x, playerPos.y - 25);
 
-      // Draw Trajectory Prediction (First 4 rounds = 8 turns)
-      if (gameState.roundCount < 8) {
+      // Draw Trajectory Prediction (First 4 rounds = 8 turns, OR if beam is active)
+      const currentWeapon = gameState.currentPlayer === 1 ? gameState.player1Projectile : gameState.player2Projectile;
+      if (gameState.roundCount < 8 || currentWeapon === 'beam') {
         ctx.setLineDash([3, 3]);
-        ctx.strokeStyle = 'rgba(255, 255, 0, 0.4)';
+        ctx.strokeStyle = currentWeapon === 'beam' ? 'rgba(255, 255, 255, 0.8)' : 'rgba(255, 255, 0, 0.4)';
         ctx.beginPath();
-        
+
         const rad = (gameState.currentPlayer === 1 ? -angleDeg : angleDeg + 180) * (Math.PI / 180);
         let px = playerPos.x;
         let py = playerPos.y;
         let vx = Math.cos(rad) * (velocity / 8);
         let vy = Math.sin(rad) * (velocity / 8);
-        
+
         ctx.moveTo(px, py);
-        for (let i = 0; i < 50; i++) {
+        const steps = currentWeapon === 'beam' ? 100 : 50;
+        for (let i = 0; i < steps; i++) {
           px += vx;
           py += vy;
           vx += gameState.wind;
@@ -792,14 +1553,14 @@ export default function App() {
     }
 
     // Draw Monkeys
-    const drawMonkey = (pos: Point, color: string, isThrowing: boolean, isPlayer1: boolean, isWinner: boolean, isDead: boolean, isActive: boolean) => {
+    const drawMonkey = (pos: Point, color: string, isThrowing: boolean, isPlayer1: boolean, isWinner: boolean, isDead: boolean, isActive: boolean, hasUmbrella: boolean = false, groundTurns: number = 0, isStruggling: boolean = false) => {
       if (isActive && !isDead) {
         ctx.save();
         const bounce = Math.sin(Date.now() / 150) * 5;
         ctx.fillStyle = '#FFD700'; // Gold
         ctx.shadowBlur = 10;
         ctx.shadowColor = '#FFD700';
-        
+
         // Draw inverted triangle above head
         ctx.beginPath();
         ctx.moveTo(pos.x - 6, pos.y - 45 + bounce);
@@ -810,71 +1571,202 @@ export default function App() {
         ctx.restore();
       }
 
+      // Countdown display
+      if (groundTurns > 0 && !isDead && !isWinner) {
+        ctx.save();
+        ctx.translate(pos.x, pos.y);
+        ctx.fillStyle = groundTurns >= 4 ? '#FF0000' : '#FFFFFF';
+        ctx.font = 'bold 24px Arial';
+        ctx.textAlign = 'center';
+        ctx.shadowBlur = 5;
+        ctx.shadowColor = '#000000';
+        ctx.fillText(`${5 - groundTurns}`, 0, -60);
+        ctx.restore();
+      }
+
       ctx.save();
-      ctx.translate(pos.x, pos.y);
-      
+
+      // Struggle animation (shaking)
+      let shakeX = 0;
+      let shakeY = 0;
+      if (isStruggling) {
+        shakeX = (Math.random() - 0.5) * 8;
+        shakeY = (Math.random() - 0.5) * 8;
+      }
+
+      ctx.translate(pos.x + shakeX, pos.y + shakeY);
+
       if (isDead) {
         ctx.rotate(isPlayer1 ? -Math.PI / 2 : Math.PI / 2);
         ctx.translate(0, 10);
       }
 
-      ctx.fillStyle = color;
-      
-      // Head
-      ctx.fillRect(-5, -22, 10, 8);
-      // Eyes
-      ctx.fillStyle = '#000000';
-      ctx.fillRect(-3, -18, 6, 2);
-      
-      ctx.fillStyle = color;
-      // Body (Chest/Shoulders)
-      ctx.fillRect(-9, -14, 18, 6);
-      ctx.fillRect(-7, -8, 14, 14);
-      
-      // Arms
+      // Refined Gorilla Drawing
+      const p = 2.5;
+      const furColor = color; // Main fur color
+      const faceColor = '#FFCC99'; // Lighter face/chest color
+      const shadowColor = 'rgba(0,0,0,0.2)';
+      const highlightColor = 'rgba(255,255,255,0.2)';
+
+      // 1. Ears
+      ctx.fillStyle = furColor;
+      ctx.fillRect(-3.5 * p, -9.5 * p, 1.5 * p, 2 * p); // Left ear
+      ctx.fillRect(2 * p, -9.5 * p, 1.5 * p, 2 * p);  // Right ear
+
+      // 2. Head
+      ctx.fillStyle = furColor;
+      ctx.fillRect(-2.5 * p, -10.5 * p, 5 * p, 4.5 * p); // Main head shape
+
+      // 3. Face Mask
+      ctx.fillStyle = faceColor;
+      ctx.fillRect(-1.5 * p, -8.5 * p, 3 * p, 2.5 * p); // Face area
+
+      // 4. Eyes
+      ctx.fillStyle = '#000';
+      ctx.fillRect(-1 * p, -7.5 * p, 0.8 * p, 0.8 * p); // Left eye
+      ctx.fillRect(0.2 * p, -7.5 * p, 0.8 * p, 0.8 * p); // Right eye
+
+      // 5. Body
+      ctx.fillStyle = furColor;
+      ctx.fillRect(-4 * p, -6 * p, 8 * p, 6 * p); // Main torso
+
+      // 6. Chest Patch
+      ctx.fillStyle = faceColor;
+      ctx.fillRect(-2.5 * p, -5 * p, 5 * p, 4 * p); // Chest area
+
+      // 7. Arms
+      ctx.fillStyle = furColor;
       if (isWinner) {
         const beat = Math.sin(Date.now() / 150) > 0;
         if (beat) {
-          // Arms up
-          ctx.fillRect(-13, -18, 4, 10);
-          ctx.fillRect(9, -18, 4, 10);
+          // Arms up (Victory)
+          ctx.fillRect(-6 * p, -11 * p, 2.5 * p, 6 * p); // Left arm up
+          ctx.fillRect(3.5 * p, -11 * p, 2.5 * p, 6 * p);  // Right arm up
+          // Hands
+          ctx.fillStyle = faceColor;
+          ctx.fillRect(-6 * p, -12 * p, 2.5 * p, 1.5 * p);
+          ctx.fillRect(3.5 * p, -12 * p, 2.5 * p, 1.5 * p);
         } else {
-          // Hands on chest
-          ctx.fillRect(-13, -12, 6, 4);
-          ctx.fillRect(7, -12, 6, 4);
+          // Arms down/bent
+          ctx.fillRect(-7 * p, -7 * p, 3.5 * p, 3 * p); // Left shoulder
+          ctx.fillRect(3.5 * p, -7 * p, 3.5 * p, 3 * p);  // Right shoulder
+          ctx.fillRect(-7 * p, -4 * p, 2 * p, 5 * p); // Left arm down
+          ctx.fillRect(5 * p, -4 * p, 2 * p, 5 * p);  // Right arm down
+          // Hands
+          ctx.fillStyle = faceColor;
+          ctx.fillRect(-7 * p, 1 * p, 2 * p, 1.5 * p);
+          ctx.fillRect(5 * p, 1 * p, 2 * p, 1.5 * p);
         }
       } else if (isThrowing) {
         const elapsed = Date.now() - (gameState.throwStartTime || 0);
         const armUp = elapsed < 400;
         if (isPlayer1) {
-          if (armUp) ctx.fillRect(-13, -24, 4, 12);
-          else ctx.fillRect(-13, -12, 4, 12);
+          // Player 1 throwing (Left arm up)
+          if (armUp) {
+            ctx.fillRect(-6 * p, -12 * p, 2.5 * p, 7 * p);
+            ctx.fillStyle = faceColor;
+            ctx.fillRect(-6 * p, -13 * p, 2.5 * p, 1.5 * p);
+            ctx.fillStyle = furColor;
+          } else {
+            ctx.fillRect(-7 * p, -7 * p, 3.5 * p, 4 * p);
+          }
+
           // Right arm on hip
-          ctx.fillRect(9, -12, 4, 8);
-          ctx.fillRect(5, -4, 6, 4);
+          ctx.fillRect(4 * p, -7 * p, 3 * p, 3 * p);
+          ctx.fillRect(5 * p, -4 * p, 2 * p, 4 * p);
+          ctx.fillStyle = faceColor;
+          ctx.fillRect(3.5 * p, -1 * p, 2 * p, 1.5 * p);
         } else {
-          if (armUp) ctx.fillRect(9, -24, 4, 12);
-          else ctx.fillRect(9, -12, 4, 12);
+          // Player 2 throwing (Right arm up)
+          if (armUp) {
+            ctx.fillRect(3.5 * p, -12 * p, 2.5 * p, 7 * p);
+            ctx.fillStyle = faceColor;
+            ctx.fillRect(3.5 * p, -13 * p, 2.5 * p, 1.5 * p);
+            ctx.fillStyle = furColor;
+          } else {
+            ctx.fillRect(3.5 * p, -7 * p, 3.5 * p, 4 * p);
+          }
+
           // Left arm on hip
-          ctx.fillRect(-13, -12, 4, 8);
-          ctx.fillRect(-11, -4, 6, 4);
+          ctx.fillRect(-7 * p, -7 * p, 3 * p, 3 * p);
+          ctx.fillRect(-7 * p, -4 * p, 2 * p, 4 * p);
+          ctx.fillStyle = faceColor;
+          ctx.fillRect(-5.5 * p, -1 * p, 2 * p, 1.5 * p);
         }
       } else {
-        // Classic "Hands on hips"
+        // Hands on hips
         // Left arm
-        ctx.fillRect(-13, -12, 4, 8);
-        ctx.fillRect(-11, -4, 6, 4);
+        ctx.fillRect(-7 * p, -7 * p, 3.5 * p, 3 * p); // Shoulder
+        ctx.fillRect(-7 * p, -4 * p, 2 * p, 4 * p); // Arm down
+        ctx.fillStyle = faceColor;
+        ctx.fillRect(-5.5 * p, -1 * p, 2 * p, 1.5 * p); // Hand
+
         // Right arm
-        ctx.fillRect(9, -12, 4, 8);
-        ctx.fillRect(5, -4, 6, 4);
+        ctx.fillStyle = furColor;
+        ctx.fillRect(3.5 * p, -7 * p, 3.5 * p, 3 * p); // Shoulder
+        ctx.fillRect(5 * p, -4 * p, 2 * p, 4 * p); // Arm down
+        ctx.fillStyle = faceColor;
+        ctx.fillRect(3.5 * p, -1 * p, 2 * p, 1.5 * p); // Hand
       }
-      
-      // Legs
-      ctx.fillRect(-7, 6, 4, 10);
-      ctx.fillRect(3, 6, 4, 10);
-      // Feet
-      ctx.fillRect(-9, 16, 6, 4);
-      ctx.fillRect(3, 16, 6, 4);
+
+      // 8. Legs
+      ctx.fillStyle = furColor;
+      ctx.fillRect(-3.5 * p, 0 * p, 2.5 * p, 4 * p); // Left leg
+      ctx.fillRect(1 * p, 0 * p, 2.5 * p, 4 * p);  // Right leg
+
+      // 9. Feet
+      ctx.fillStyle = faceColor;
+      ctx.fillRect(-4.5 * p, 4 * p, 3.5 * p, 1.5 * p); // Left foot
+      ctx.fillRect(1 * p, 4 * p, 3.5 * p, 1.5 * p);  // Right foot
+
+      // 10. Shading/Highlights (Subtle)
+      ctx.fillStyle = highlightColor;
+      ctx.fillRect(-2 * p, -10 * p, 1 * p, 1 * p); // Head highlight
+      ctx.fillRect(-3.5 * p, -5.5 * p, 1 * p, 1 * p); // Shoulder highlight
+
+      ctx.fillStyle = shadowColor;
+      ctx.fillRect(-3.5 * p, -1 * p, 2.5 * p, 0.5 * p); // Leg shadow
+      ctx.fillRect(1 * p, -1 * p, 2.5 * p, 0.5 * p);  // Leg shadow
+
+      // 11. Umbrella (if protected during meteor shower)
+      if (hasUmbrella) {
+        ctx.save();
+        ctx.translate(0, -15 * p); // Move above head
+
+        // Handle
+        ctx.strokeStyle = '#8B4513';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.lineTo(0, -25);
+        ctx.stroke();
+
+        // Canopy
+        const umbrellaColor = '#FF4444';
+        ctx.fillStyle = umbrellaColor;
+        ctx.beginPath();
+        ctx.arc(0, -25, 40, Math.PI, 0);
+        ctx.fill();
+
+        // Ribs/Details
+        ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+        ctx.lineWidth = 2;
+        for (let i = 1; i < 4; i++) {
+          ctx.beginPath();
+          ctx.moveTo(0, -25);
+          const angle = Math.PI + (i * Math.PI) / 4;
+          ctx.lineTo(Math.cos(angle) * 40, -25 + Math.sin(angle) * 40);
+          ctx.stroke();
+        }
+
+        // Top point
+        ctx.fillStyle = '#FFD700';
+        ctx.beginPath();
+        ctx.arc(0, -65, 4, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.restore();
+      }
 
       ctx.restore();
     };
@@ -888,8 +1780,11 @@ export default function App() {
     const p1Active = gameState.currentPlayer === 1 && (gameState.status === 'aiming' || gameState.status === 'throwing');
     const p2Active = gameState.currentPlayer === 2 && (gameState.status === 'aiming' || gameState.status === 'throwing');
 
-    drawMonkey(gameState.player1Pos, '#FFCC99', p1Throwing, true, p1Winner, p1Dead, p1Active);
-    drawMonkey(gameState.player2Pos, '#FFCC99', p2Throwing, false, p2Winner, p2Dead, p2Active);
+    const p1HasUmbrella = gameState.status === 'meteorShower' && gameState.meteorShower?.protectedPlayer === 1;
+    const p2HasUmbrella = gameState.status === 'meteorShower' && gameState.meteorShower?.protectedPlayer === 2;
+
+    drawMonkey(gameState.player1Pos, '#FFB84D', p1Throwing, true, p1Winner, p1Dead, p1Active, p1HasUmbrella, gameState.p1GroundTurns, gameState.p1Struggling);
+    drawMonkey(gameState.player2Pos, '#FFB84D', p2Throwing, false, p2Winner, p2Dead, p2Active, p2HasUmbrella, gameState.p2GroundTurns, gameState.p2Struggling);
 
     // Draw Banana
     if (gameState.banana) {
@@ -897,53 +1792,105 @@ export default function App() {
         ctx.save();
         ctx.translate(x, y);
         ctx.rotate(angle);
-        
+
         if (type === 'giant') {
           // Draw Golden Sun for 10x
-          const time = Date.now() / 200;
+          const time = Date.now() / 100;
+          const pulse = Math.sin(time) * 5;
+
           ctx.fillStyle = '#FFD700';
-          ctx.shadowBlur = 10;
+          ctx.shadowBlur = 25 + pulse;
           ctx.shadowColor = '#FFD700';
+
+          // Outer glow circle
           ctx.beginPath();
-          ctx.arc(0, 0, 10, 0, Math.PI * 2);
+          ctx.arc(0, 0, 18 + pulse / 2, 0, Math.PI * 2);
+          ctx.fillStyle = 'rgba(255, 215, 0, 0.15)';
           ctx.fill();
-          
+
+          // Core
+          ctx.beginPath();
+          ctx.arc(0, 0, 14, 0, Math.PI * 2);
+          ctx.fillStyle = '#FFD700';
+          ctx.fill();
+
+          // Rays with flickering length
           ctx.strokeStyle = '#FFD700';
-          ctx.lineWidth = 1.5;
-          for (let i = 0; i < 8; i++) {
-            const a = (i * Math.PI) / 4 + time;
+          ctx.lineWidth = 3;
+          for (let i = 0; i < 12; i++) {
+            const a = (i * Math.PI) / 6 + time * 0.5;
+            const rayLen = 20 + Math.random() * 15 + pulse;
             ctx.beginPath();
-            ctx.moveTo(Math.cos(a) * 12, Math.sin(a) * 12);
-            ctx.lineTo(Math.cos(a) * 18, Math.sin(a) * 18);
+            ctx.moveTo(Math.cos(a) * 16, Math.sin(a) * 16);
+            ctx.lineTo(Math.cos(a) * rayLen, Math.sin(a) * rayLen);
             ctx.stroke();
           }
+
           ctx.shadowBlur = 0;
           ctx.fillStyle = '#000000';
-          ctx.font = 'bold 7px Arial';
+          ctx.font = 'bold 10px Arial';
           ctx.textAlign = 'center';
-          ctx.fillText('10X', 0, 3);
+          ctx.fillText('10X', 0, 4);
         } else if (type === 'acid') {
           // Draw Acid Bottle
+          const time = Date.now() / 100;
+          const shake = Math.sin(time * 10) * 1;
+
+          ctx.translate(shake, 0);
+
+          // Bottle body
           ctx.fillStyle = '#00FF00';
-          ctx.fillRect(-5, -7, 10, 14);
+          ctx.shadowBlur = 10;
+          ctx.shadowColor = '#00FF00';
+          ctx.beginPath();
+          ctx.roundRect(-5, -7, 10, 14, 2);
+          ctx.fill();
+
+          // Liquid inside (darker green)
+          ctx.fillStyle = '#008800';
+          const liquidLevel = Math.sin(time * 2) * 2 + 2;
+          ctx.fillRect(-5, liquidLevel - 7, 10, 14 - liquidLevel);
+
+          // Label
+          ctx.fillStyle = '#FFFFFF';
+          ctx.fillRect(-4, -2, 8, 5);
+          ctx.fillStyle = '#000000';
+          ctx.font = 'bold 4px Arial';
+          ctx.textAlign = 'center';
+          ctx.fillText('☠', 0, 2);
+
+          // Bottle neck
           ctx.fillStyle = '#FFFFFF';
           ctx.fillRect(-3, -10, 6, 3);
-          ctx.fillStyle = '#000000';
-          ctx.font = 'bold 6px Arial';
-          ctx.textAlign = 'center';
-          ctx.fillText('ACID', 0, 2);
+
+          // Acid Bubbles/Drips
+          ctx.fillStyle = '#00FF00';
+          for (let i = 0; i < 3; i++) {
+            const bx = Math.sin(time + i) * 8;
+            const by = 10 + (time * 10 + i * 10) % 20;
+            ctx.beginPath();
+            ctx.arc(bx, by, 2, 0, Math.PI * 2);
+            ctx.fill();
+          }
+
+          ctx.shadowBlur = 0;
         } else {
           // Normal Banana
           ctx.beginPath();
           ctx.strokeStyle = '#FFFF55';
           ctx.lineWidth = 3;
           ctx.lineCap = 'round';
-          ctx.arc(0, 0, 5, 0.2 * Math.PI, 0.8 * Math.PI);
+          ctx.arc(0, 0, 6, 0.1 * Math.PI, 0.9 * Math.PI);
           ctx.stroke();
+
+          // Stem
           ctx.fillStyle = '#8B4513';
-          ctx.fillRect(3, -1, 2, 2);
+          ctx.save();
+          ctx.rotate(0.1 * Math.PI);
+          ctx.fillRect(5, -1, 3, 2);
+          ctx.restore();
         }
-        
+
         ctx.restore();
       };
 
@@ -980,7 +1927,7 @@ export default function App() {
         ctx.beginPath();
         ctx.arc(gameState.explosion.pos.x, gameState.explosion.pos.y, gameState.explosion.radius, 0, Math.PI * 2);
         ctx.fill();
-        
+
         // Bubbles inside
         ctx.fillStyle = '#CCFF00';
         const bubbleCount = 8;
@@ -1019,7 +1966,7 @@ export default function App() {
     ctx.moveTo(windX - 50, windY);
     ctx.lineTo(windX + 50, windY);
     ctx.stroke();
-    
+
     ctx.fillStyle = '#FF5555';
     const windPower = gameState.wind * 500;
     ctx.fillRect(windX, windY - 5, windPower, 10);
@@ -1029,10 +1976,10 @@ export default function App() {
   const handleCanvasMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const rect = canvasRef.current?.getBoundingClientRect();
     if (!rect) return;
-    
+
     const x = (e.clientX - rect.left) * (CANVAS_WIDTH / rect.width);
     const y = (e.clientY - rect.top) * (CANVAS_HEIGHT / rect.height);
-    
+
     setGameState(prev => {
       if (!prev || prev.status !== 'aiming') return prev;
 
@@ -1047,6 +1994,8 @@ export default function App() {
         setTimeout(() => setMessage(`${prev.playerNames[1]} 的回合`), 1500);
         return prev;
       }
+
+      soundService.playPull();
 
       return {
         ...prev,
@@ -1089,7 +2038,7 @@ export default function App() {
       } else {
         canvas.style.cursor = 'default';
       }
-      
+
       return prev;
     });
   };
@@ -1100,10 +2049,10 @@ export default function App() {
 
       const dx = prev.dragCurrent.x - prev.dragStart.x;
       const dy = prev.dragCurrent.y - prev.dragStart.y;
-      
+
       const angleRad = Math.atan2(dy, prev.currentPlayer === 1 ? -dx : dx);
       let angleDeg = angleRad * (180 / Math.PI);
-      
+
       const dist = Math.sqrt(dx * dx + dy * dy);
       const velocity = Math.min(dist * 2.55, 255);
 
@@ -1111,14 +2060,14 @@ export default function App() {
         // We can't call handleThrow directly here because it also calls setGameState.
         // Instead, we perform the throw logic here or use a separate effect.
         // For simplicity, let's trigger the throw by returning the new state.
-        
+
         const rad = (prev.currentPlayer === 1 ? -angleDeg : angleDeg + 180) * (Math.PI / 180);
         const vx = Math.cos(rad) * (velocity / 8);
         const vy = Math.sin(rad) * (velocity / 8);
 
         const startPos = prev.currentPlayer === 1 ? { ...prev.player1Pos } : { ...prev.player2Pos };
         const currentWeapon = prev.currentPlayer === 1 ? prev.player1Projectile : prev.player2Projectile;
-        
+
         return {
           ...prev,
           status: 'throwing',
@@ -1134,6 +2083,7 @@ export default function App() {
             trail: [startPos],
             angle: 0,
             type: currentWeapon,
+            hasHitSun: false,
           },
         };
       } else {
@@ -1149,11 +2099,11 @@ export default function App() {
   const handleCanvasTouchStart = (e: React.TouchEvent<HTMLCanvasElement>) => {
     const rect = canvasRef.current?.getBoundingClientRect();
     if (!rect) return;
-    
+
     const touch = e.touches[0];
     const x = (touch.clientX - rect.left) * (CANVAS_WIDTH / rect.width);
     const y = (touch.clientY - rect.top) * (CANVAS_HEIGHT / rect.height);
-    
+
     setGameState(prev => {
       if (!prev || prev.status !== 'aiming') return prev;
 
@@ -1168,6 +2118,8 @@ export default function App() {
         setTimeout(() => setMessage(`${prev.playerNames[1]} 的回合`), 1500);
         return prev;
       }
+
+      soundService.playPull();
 
       return {
         ...prev,
@@ -1217,40 +2169,50 @@ export default function App() {
         <div className="game-content relative w-full h-full flex flex-col items-center justify-center">
           {/* Header / Scores & Controls */}
           <div className="absolute top-0 left-0 right-0 p-4 flex justify-between items-start z-20 pointer-events-none">
-          {/* Player 1 Side */}
-          <div className="flex items-start gap-2">
-            <div className="bg-black/80 p-2 border-2 border-white pointer-events-auto">
-              <div className="text-[10px] uppercase opacity-70 leading-none mb-1">{gameState?.playerNames[0] || '玩家 1'}</div>
-              <div className="text-xl font-bold text-yellow-400 leading-none mb-2">{gameState?.scores[0]}</div>
-              {gameState && (
-                <div className={`text-[10px] px-1 font-bold ${gameState.player1Projectile !== 'normal' ? 'bg-yellow-400 text-black animate-pulse' : 'bg-white/20 text-white'}`}>
-                  {gameState.player1Projectile === 'giant' ? '十倍大香蕉' : gameState.player1Projectile === 'acid' ? '硫酸瓶' : '香蕉'}
-                </div>
-              )}
+            {/* Player 1 Side */}
+            <div className="flex items-start gap-2">
+              <div className="bg-black/80 p-2 border-2 border-white pointer-events-auto">
+                <div className="text-[10px] uppercase opacity-70 leading-none mb-1">{gameState?.playerNames[0] || '玩家 1'}</div>
+                <div className="text-xl font-bold text-yellow-400 leading-none mb-2">{gameState?.scores[0]}</div>
+                {gameState && (
+                  <div className={`text-[10px] px-1 font-bold ${gameState.player1Projectile !== 'normal' ? 'bg-yellow-400 text-black animate-pulse' : 'bg-white/20 text-white'}`}>
+                    {gameState.player1Projectile === 'giant' ? '十倍大香蕉' : gameState.player1Projectile === 'acid' ? '硫酸瓶' : gameState.player1Projectile === 'beam' ? '導引光束' : gameState.player1Projectile === 'meteor' ? '火熱隕石' : '香蕉'}
+                  </div>
+                )}
+                {gameState && (
+                  <div className="mt-1 text-[10px] bg-blue-600/40 text-white px-1 font-bold border-t border-white/20 pt-1">
+                    本回合得分: {gameState.currentRoundPoints[0]}
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
 
-          {/* Player 2 Side */}
-          <div className="flex items-start gap-2">
-            <div className="bg-black/80 p-2 border-2 border-white text-right pointer-events-auto">
-              <div className="text-[10px] uppercase opacity-70 leading-none mb-1">{gameState?.playerNames[1] || '玩家 2'}</div>
-              <div className="text-xl font-bold text-yellow-400 leading-none mb-2">{gameState?.scores[1]}</div>
-              {gameState && (
-                <div className={`text-[10px] px-1 font-bold inline-block ${gameState.player2Projectile !== 'normal' ? 'bg-yellow-400 text-black animate-pulse' : 'bg-white/20 text-white'}`}>
-                  {gameState.player2Projectile === 'giant' ? '十倍大香蕉' : gameState.player2Projectile === 'acid' ? '硫酸瓶' : '香蕉'}
-                </div>
-              )}
+            {/* Player 2 Side */}
+            <div className="flex items-start gap-2">
+              <div className="bg-black/80 p-2 border-2 border-white text-right pointer-events-auto">
+                <div className="text-[10px] uppercase opacity-70 leading-none mb-1">{gameState?.playerNames[1] || '玩家 2'}</div>
+                <div className="text-xl font-bold text-yellow-400 leading-none mb-2">{gameState?.scores[1]}</div>
+                {gameState && (
+                  <div className={`text-[10px] px-1 font-bold inline-block ${gameState.player2Projectile !== 'normal' ? 'bg-yellow-400 text-black animate-pulse' : 'bg-white/20 text-white'}`}>
+                    {gameState.player2Projectile === 'giant' ? '十倍大香蕉' : gameState.player2Projectile === 'acid' ? '硫酸瓶' : gameState.player2Projectile === 'beam' ? '導引光束' : gameState.player2Projectile === 'meteor' ? '火熱隕石' : '香蕉'}
+                  </div>
+                )}
+                {gameState && (
+                  <div className="mt-1 text-[10px] bg-blue-600/40 text-white px-1 font-bold border-t border-white/20 pt-1">
+                    本回合得分: {gameState.currentRoundPoints[1]}
+                  </div>
+                )}
+              </div>
+              {/* Fullscreen toggle during game */}
+              <button
+                onClick={toggleFullscreen}
+                className="bg-black/80 p-2 border-2 border-white text-white pointer-events-auto hover:bg-white/20 transition-colors flex items-center justify-center"
+                title={isFullscreen ? '退出全螢幕' : '全螢幕'}
+              >
+                {isFullscreen ? <Minimize size={16} /> : <Maximize size={16} />}
+              </button>
             </div>
-            {/* Fullscreen toggle during game */}
-            <button 
-              onClick={toggleFullscreen}
-              className="bg-black/80 p-2 border-2 border-white text-white pointer-events-auto hover:bg-white/20 transition-colors flex items-center justify-center"
-              title={isFullscreen ? '退出全螢幕' : '全螢幕'}
-            >
-              {isFullscreen ? <Minimize size={16} /> : <Maximize size={16} />}
-            </button>
           </div>
-        </div>
 
           {/* Game Canvas */}
           <canvas
@@ -1270,175 +2232,230 @@ export default function App() {
           <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex flex-col items-center z-10">
             <div className="bg-black/80 px-4 py-1 border-2 border-white rounded-full flex items-center gap-2 text-xs font-bold">
               <Wind size={14} className="text-blue-400" />
-              風向: {Math.abs((gameState?.wind || 0) * 1000).toFixed(0)} { (gameState?.wind || 0) > 0 ? '→' : '←' }
+              風向: {Math.abs((gameState?.wind || 0) * 1000).toFixed(0)} {(gameState?.wind || 0) > 0 ? '→' : '←'}
             </div>
           </div>
 
           <AnimatePresence>
-          {showStartScreen && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="absolute inset-0 bg-[#0000AA] z-50 flex flex-col items-center justify-center p-8 overflow-hidden"
-            >
-              <div className="relative mb-12">
-                <BananaOrbit />
-                <motion.h1 
-                  initial={{ y: -50, scale: 0.5 }}
-                  animate={{ y: 0, scale: 1 }}
-                  className="text-7xl md:text-9xl font-bold text-yellow-400 drop-shadow-[0_8px_0_rgba(0,0,0,1)] text-center relative z-10"
-                >
-                  猴子丟香蕉
-                </motion.h1>
-              </div>
-
-              <motion.button
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.9 }}
-                onClick={handleStartGame}
-                className="retro-button text-4xl px-12 py-6 mb-12"
+            {showStartScreen && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="absolute inset-0 bg-[#0000AA] z-50 flex flex-col items-center justify-center p-8 overflow-hidden"
               >
-                開始遊戲
-              </motion.button>
-
-              <div className="flex flex-col md:flex-row gap-8 mb-12 w-full max-w-2xl px-4">
-                <div className="flex-1 flex flex-col gap-2">
-                  <label className="text-sm uppercase opacity-70 text-center">玩家一 名稱</label>
-                  <input
-                    type="text"
-                    value={p1NameInput}
-                    onChange={(e) => setP1NameInput(e.target.value)}
-                    placeholder="玩家一"
-                    className="retro-input w-full text-center text-xl"
-                  />
+                <div className="relative mb-12">
+                  <BananaOrbit />
+                  <motion.h1
+                    initial={{ y: -50, scale: 0.5 }}
+                    animate={{ y: 0, scale: 1 }}
+                    className="text-7xl md:text-9xl font-bold text-yellow-400 drop-shadow-[0_8px_0_rgba(0,0,0,1)] text-center relative z-10"
+                  >
+                    猴子丟香蕉
+                  </motion.h1>
                 </div>
-                <div className="flex-1 flex flex-col gap-2">
-                  <label className="text-sm uppercase opacity-70 text-center">玩家二 名稱</label>
-                  <input
-                    type="text"
-                    value={p2NameInput}
-                    onChange={(e) => setP2NameInput(e.target.value)}
-                    placeholder="玩家二"
-                    className="retro-input w-full text-center text-xl"
-                  />
-                </div>
-              </div>
 
-              <div className="mt-auto w-full flex flex-col items-center gap-4">
-                <div className="flex flex-col items-center gap-2">
-                  <label className="text-sm uppercase opacity-70">重力值設定</label>
-                  <div className="flex items-center gap-3">
+                <motion.button
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.9 }}
+                  onClick={handleStartGame}
+                  className="retro-button text-4xl px-12 py-6 mb-12"
+                >
+                  開始遊戲
+                </motion.button>
+
+                <motion.button
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.9 }}
+                  onClick={toggleMute}
+                  className="retro-button flex items-center gap-3 px-8 py-4 mb-12"
+                >
+                  {isMuted ? <VolumeX size={24} /> : <Volume2 size={24} />}
+                  {isMuted ? '音效: 關閉' : '音效: 開啟'}
+                </motion.button>
+
+                <div className="flex flex-col md:flex-row gap-8 mb-12 w-full max-w-2xl px-4">
+                  <div className="flex-1 flex flex-col gap-2">
+                    <label className="text-sm uppercase opacity-70 text-center">玩家一 名稱</label>
                     <input
-                      type="number"
-                      step="0.1"
-                      value={gravityInput}
-                      onChange={(e) => setGravityInput(e.target.value)}
-                      placeholder="預設地球Ｇ=9.8"
-                      className="retro-input w-48 text-center text-xl"
+                      type="text"
+                      value={p1NameInput}
+                      onChange={(e) => setP1NameInput(e.target.value)}
+                      placeholder="玩家一"
+                      className="retro-input w-full text-center text-xl"
                     />
-                    <span className="text-xl opacity-50">m/s²</span>
                   </div>
-                  <p className="text-[10px] opacity-50 mt-1">預設地球Ｇ=9.8</p>
-                </div>
-
-                <button
-                  onClick={toggleFullscreen}
-                  className="retro-button text-sm px-6 py-2 mt-4"
-                >
-                  {isFullscreen ? '退出全螢幕' : '全螢幕'}
-                </button>
-              </div>
-
-              <div className="absolute bottom-4 right-4 text-xs opacity-50">
-                ＡＮＴＹＥＨ修正
-              </div>
-            </motion.div>
-          )}
-
-          {gameState?.status === 'roundOver' && (
-            <motion.div
-              initial={{ scale: 0.8, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              className="absolute inset-0 flex flex-col items-center justify-center bg-black/60 backdrop-blur-sm z-30"
-            >
-              <div className="bg-[#0000AA] p-10 border-8 border-white text-center shadow-2xl">
-                <Trophy size={64} className="text-yellow-400 mx-auto mb-4" />
-                <h2 className="text-4xl font-bold mb-2">轟隆！</h2>
-                <p className="text-xl mb-2">
-                  {gameState.winner === 1 ? gameState.playerNames[0] : gameState.playerNames[1]} 贏得本回合！
-                </p>
-                {gameState.winner !== gameState.currentPlayer && (
-                  <p className="text-sm text-red-400 mb-6 italic">哎呀！打到自己了！</p>
-                )}
-                <div className="mb-8">
-                  <div className="text-sm opacity-70 uppercase mb-2">目前比分</div>
-                  <div className="text-3xl font-bold text-yellow-400">
-                    {gameState.scores[0]} : {gameState.scores[1]}
+                  <div className="flex-1 flex flex-col gap-2">
+                    <label className="text-sm uppercase opacity-70 text-center">玩家二 名稱</label>
+                    <input
+                      type="text"
+                      value={p2NameInput}
+                      onChange={(e) => setP2NameInput(e.target.value)}
+                      placeholder="玩家二"
+                      className="retro-input w-full text-center text-xl"
+                    />
                   </div>
                 </div>
-                <button
-                  onClick={() => initGame()}
-                  className="retro-button flex items-center gap-2 mx-auto"
-                >
-                  <Play size={20} />
-                  下一回合
-                </button>
-              </div>
-            </motion.div>
-          )}
 
-          {gameState?.status === 'tournamentOver' && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="absolute inset-0 flex flex-col items-center justify-center bg-[#0000AA] z-[60]"
-            >
-              <div className="relative flex flex-col items-center">
-                {/* Gorilla on top of Trophy */}
-                <div className="mb-[-10px] z-10">
-                   <BeatingGorilla color="#FFCC99" />
-                </div>
-                
-                {/* Trophy */}
-                <div className="relative">
-                  <Trophy size={160} className="text-yellow-400 drop-shadow-2xl" />
+                <div className="mt-auto w-full flex flex-col items-center gap-4">
+                  <div className="flex flex-col items-center gap-2">
+                    <label className="text-sm uppercase opacity-70">重力值設定</label>
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="number"
+                        step="0.1"
+                        value={gravityInput}
+                        onChange={(e) => setGravityInput(e.target.value)}
+                        placeholder="預設地球Ｇ=9.8"
+                        className="retro-input w-48 text-center text-xl"
+                      />
+                      <span className="text-xl opacity-50">m/s²</span>
+                    </div>
+                    <p className="text-[10px] opacity-50 mt-1">預設地球Ｇ=9.8</p>
+                  </div>
+
+                  <button
+                    onClick={toggleFullscreen}
+                    className="retro-button text-sm px-6 py-2 mt-4"
+                  >
+                    {isFullscreen ? '退出全螢幕' : '全螢幕'}
+                  </button>
                 </div>
 
-                <motion.h2 
-                  initial={{ y: 20, opacity: 0 }}
-                  animate={{ y: 0, opacity: 1 }}
-                  transition={{ delay: 0.5 }}
-                  className="text-6xl font-bold text-white mt-8 mb-4 drop-shadow-lg"
-                >
-                  恭喜贏家
-                </motion.h2>
-                
-                <motion.p 
-                  initial={{ scale: 0.5, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  transition={{ delay: 0.8 }}
-                  className="text-3xl text-yellow-400 font-bold mb-12"
-                >
-                  {gameState.tournamentWinner === 1 ? gameState.playerNames[0] : gameState.playerNames[1]} 統治了城市！
-                </motion.p>
+                <div className="absolute bottom-4 right-4 text-xs opacity-50 text-right">
+                  <div>ＡＮＴＹＥＨ修正</div>
+                  <div className="text-[10px] mt-1">v3.6.0</div>
+                </div>
+              </motion.div>
+            )}
 
-                <button
-                  onClick={handleResetToStart}
-                  className="retro-button text-2xl px-12 py-6"
-                >
-                  重新開始新賽局
-                </button>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+            {gameState?.status === 'roundOver' && (
+              <motion.div
+                initial={{ scale: 0.8, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                className="absolute inset-0 flex flex-col items-center justify-center bg-black/60 backdrop-blur-sm z-30"
+              >
+                <div className="bg-[#0000AA] p-10 border-8 border-white text-center shadow-2xl">
+                  <Trophy size={64} className="text-yellow-400 mx-auto mb-4" />
+                  <h2 className="text-4xl font-bold mb-2">轟隆！</h2>
+                  <p className="text-xl mb-2">
+                    {gameState.winner === 1 ? gameState.playerNames[0] : gameState.playerNames[1]} 贏得本回合！
+                  </p>
+                  {gameState.winner !== gameState.currentPlayer && (
+                    <p className="text-sm text-red-400 mb-6 italic">哎呀！打到自己了！</p>
+                  )}
+                  <div className="mb-8">
+                    <div className="text-sm opacity-70 uppercase mb-2">本回合得分</div>
+                    <div className="flex justify-center gap-8 mb-4">
+                      <div className="text-center">
+                        <div className="text-[10px] opacity-70">{gameState.playerNames[0]}</div>
+                        <div className="text-2xl font-bold text-white">{gameState.currentRoundPoints[0]}</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-[10px] opacity-70">{gameState.playerNames[1]}</div>
+                        <div className="text-2xl font-bold text-white">{gameState.currentRoundPoints[1]}</div>
+                      </div>
+                    </div>
+                    <div className="text-sm opacity-70 uppercase mb-2">目前總比分</div>
+                    <div className="text-3xl font-bold text-yellow-400">
+                      {gameState.scores[0]} : {gameState.scores[1]}
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => initGame()}
+                    className="retro-button flex items-center gap-2 mx-auto"
+                  >
+                    <Play size={20} />
+                    下一回合
+                  </button>
+                </div>
+              </motion.div>
+            )}
+
+            {gameState?.status === 'tournamentOver' && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="absolute inset-0 flex flex-col items-center justify-center bg-[#0000AA] z-[60]"
+              >
+                <div className="relative flex flex-col items-center">
+                  {/* Gorilla on top of Trophy */}
+                  <div className="mb-[-10px] z-10">
+                    <BeatingGorilla color="#FFCC99" />
+                  </div>
+
+                  {/* Trophy */}
+                  <div className="relative">
+                    <Trophy size={160} className="text-yellow-400 drop-shadow-2xl" />
+                  </div>
+
+                  <motion.h2
+                    initial={{ y: 20, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    transition={{ delay: 0.5 }}
+                    className="text-6xl font-bold text-white mt-8 mb-4 drop-shadow-lg"
+                  >
+                    恭喜贏家
+                  </motion.h2>
+
+                  <motion.p
+                    initial={{ scale: 0.5, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ delay: 0.8 }}
+                    className="text-3xl text-yellow-400 font-bold mb-8"
+                  >
+                    {gameState.tournamentWinner === 1 ? gameState.playerNames[0] : gameState.playerNames[1]} 統治了城市！
+                  </motion.p>
+
+                  {/* Round History Table */}
+                  <motion.div
+                    initial={{ y: 20, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    transition={{ delay: 1 }}
+                    className="bg-black/40 border-2 border-white/30 p-4 mb-12 w-full max-w-md"
+                  >
+                    <h3 className="text-sm uppercase opacity-70 mb-4 text-center">每回合得分比較</h3>
+                    <div className="grid grid-cols-3 gap-4 text-center border-b border-white/20 pb-2 mb-2">
+                      <div className="text-[10px] uppercase opacity-50">回合</div>
+                      <div className="text-xs font-bold truncate">{gameState.playerNames[0]}</div>
+                      <div className="text-xs font-bold truncate">{gameState.playerNames[1]}</div>
+                    </div>
+                    <div className="max-h-40 overflow-y-auto custom-scrollbar">
+                      {gameState.roundHistory.p1.map((p1Score, idx) => (
+                        <div key={idx} className="grid grid-cols-3 gap-4 text-center py-1 border-b border-white/5 last:border-0">
+                          <div className="text-xs opacity-50">{idx + 1}</div>
+                          <div className={`text-sm ${p1Score > gameState.roundHistory.p2[idx] ? 'text-yellow-400 font-bold' : 'text-white'}`}>
+                            {p1Score}
+                          </div>
+                          <div className={`text-sm ${gameState.roundHistory.p2[idx] > p1Score ? 'text-yellow-400 font-bold' : 'text-white'}`}>
+                            {gameState.roundHistory.p2[idx]}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="grid grid-cols-3 gap-4 text-center pt-2 mt-2 border-t border-white/20 font-bold">
+                      <div className="text-xs uppercase opacity-50">總計</div>
+                      <div className="text-yellow-400">{gameState.roundHistory.p1.reduce((a, b) => a + b, 0)}</div>
+                      <div className="text-yellow-400">{gameState.roundHistory.p2.reduce((a, b) => a + b, 0)}</div>
+                    </div>
+                  </motion.div>
+
+                  <button
+                    onClick={handleResetToStart}
+                    className="retro-button text-2xl px-12 py-6"
+                  >
+                    重新開始新賽局
+                  </button>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
       </div>
-    </div>
 
       <div className="mt-8 text-center max-w-lg">
         <p className="text-sm opacity-60 leading-relaxed">
-          啟發自 1991 年 QBASIC 經典遊戲。調整角度與力量來擊中對手的猩猩。 
+          啟發自 1991 年 QBASIC 經典遊戲。調整角度與力量來擊中對手的猩猩。
           注意風向與重力的影響！
         </p>
       </div>

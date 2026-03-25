@@ -29,7 +29,13 @@ jobs:
       - name: Build 🏗️
         run: npm run build
         env:
-          VITE_FIREBASE_API_KEY: "__FIREBASE_API_KEY__" # 依照使用者規範使用佔位符
+          GEMINI_API_KEY: "__GEMINI_API_KEY__" # 依照使用者規範使用佔位符
+
+      - name: Inject Secrets 💉
+        run: python .github/inject.py
+        env:
+          GEMINI_API_KEY_REAL: ${{ secrets.GEMINI_API_KEY }}
+          VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
 
       - name: Deploy 🚀
         uses: JamesIves/github-pages-deploy-action@v4

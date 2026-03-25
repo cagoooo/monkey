@@ -8,6 +8,8 @@ export interface Point {
   y: number;
 }
 
+export type ParticleType = 'smoke' | 'spark' | 'debris' | 'normal';
+
 export interface Particle {
   id: number;
   pos: Point;
@@ -16,6 +18,10 @@ export interface Particle {
   maxLife: number;
   color: string;
   size: number;
+  sparkle?: boolean;
+  type?: ParticleType;
+  rotation?: number;
+  rotationVel?: number;
 }
 
 export interface Building {
@@ -32,20 +38,35 @@ export interface Destruction {
   radius: number;
 }
 
-export type ProjectileType = 'normal' | 'giant' | 'acid';
+export type ProjectileType = 'normal' | 'giant' | 'acid' | 'beam' | 'meteor';
 
 export interface Treasure {
   id: number;
   pos: Point;
-  type: 'giant' | 'acid';
+  type: 'giant' | 'acid' | 'beam' | 'meteor';
   active: boolean;
+}
+
+export interface Meteor {
+  id: number;
+  pos: Point;
+  vel: Point;
+}
+
+export interface MeteorShower {
+  centerX: number;
+  startTime: number;
+  duration: number;
+  meteors: Meteor[];
+  protectedPlayer?: 1 | 2;
 }
 
 export interface GameState {
   player1Pos: Point;
   player2Pos: Point;
   sunPos: Point;
-  sunState: 'normal' | 'surprised';
+  sunState: 'normal' | 'surprised' | 'sunglasses' | 'dead' | 'skull' | 'falling';
+  sunHits: number;
   buildings: Building[];
   destructions: Destruction[];
   particles: Particle[];
@@ -55,7 +76,7 @@ export interface GameState {
   scores: [number, number];
   playerNames: [string, string];
   gravity: number;
-  status: 'aiming' | 'throwing' | 'exploding' | 'celebrating' | 'roundOver' | 'tournamentOver';
+  status: 'aiming' | 'throwing' | 'exploding' | 'celebrating' | 'roundOver' | 'tournamentOver' | 'meteorShower';
   winner?: number;
   tournamentWinner?: number;
   roundCount: number;
@@ -65,12 +86,20 @@ export interface GameState {
   treasures: Treasure[];
   player1Projectile: ProjectileType;
   player2Projectile: ProjectileType;
+  meteorShower?: MeteorShower;
+  roundHistory: { p1: number[], p2: number[] };
+  currentRoundPoints: [number, number];
+  p1GroundTurns: number;
+  p2GroundTurns: number;
+  p1Struggling: boolean;
+  p2Struggling: boolean;
   banana?: {
     pos: Point;
     vel: Point;
     trail: Point[];
     angle: number;
     type: ProjectileType;
+    hasHitSun?: boolean;
   };
   explosion?: {
     pos: Point;
