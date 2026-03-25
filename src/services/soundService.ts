@@ -7,25 +7,45 @@ class SoundService {
   private ctx: AudioContext | null = null;
   private muted: boolean = false;
   private isInitialized: boolean = false;
+  private userInteracted: boolean = false;
+  private pendingIntro: boolean = false;
 
   constructor() {
     // Standard approach to satisfy browser autoplay policies
     const resume = () => {
-      if (this.ctx && this.ctx.state === 'suspended') {
-        this.ctx.resume().then(() => {
+      this.userInteracted = true;
+      if (this.ctx) {
+        if (this.ctx.state === 'suspended') {
+          this.ctx.resume().then(() => {
+            this.isInitialized = true;
+            this.handlePendingIntro();
+            this.removeListeners(resume);
+          }).catch(() => { });
+        } else if (this.ctx.state === 'running') {
           this.isInitialized = true;
+          this.handlePendingIntro();
           this.removeListeners(resume);
-        }).catch(() => { });
-      } else if (this.ctx && this.ctx.state === 'running') {
-        this.isInitialized = true;
+        }
+      } else {
+        // Handle case where sound was requested before ctx existed
+        if (this.pendingIntro) {
+          this.handlePendingIntro();
+        }
         this.removeListeners(resume);
       }
     };
 
     if (typeof window !== 'undefined') {
-      window.addEventListener('click', resume);
-      window.addEventListener('keydown', resume);
-      window.addEventListener('touchstart', resume);
+      window.addEventListener('click', resume, { once: false });
+      window.addEventListener('keydown', resume, { once: false });
+      window.addEventListener('touchstart', resume, { once: false });
+    }
+  }
+
+  private handlePendingIntro() {
+    if (this.pendingIntro) {
+      this.pendingIntro = false;
+      this.playIntro();
     }
   }
 
@@ -50,11 +70,15 @@ class SoundService {
 
   private init() {
     if (this.muted) return;
-    if (!this.ctx) {
+    if (typeof window === 'undefined') return;
+
+    // Only create AudioContext if we have a user gesture
+    if (!this.ctx && this.userInteracted) {
       this.ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
     }
-    if (this.ctx.state === 'suspended') {
-      this.ctx.resume();
+
+    if (this.ctx && this.ctx.state === 'suspended' && this.userInteracted) {
+      this.ctx.resume().catch(() => { });
     }
   }
 
@@ -260,6 +284,10 @@ class SoundService {
 
   playIntro() {
     if (this.muted) return;
+    if (!this.userInteracted) {
+      this.pendingIntro = true;
+      return;
+    }
     this.init();
     if (!this.ctx) return;
     const now = this.ctx.currentTime;
