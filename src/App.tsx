@@ -165,6 +165,7 @@ export default function App() {
   const lastWindowToggle = useRef<number>(0);
   const nextGameStarter = useRef<1 | 2>(1);
   const hasCheckedHighScore = useRef(false);
+  const isInitialMount = useRef(true); // 用於區分「初次載入」vs「使用者互動後返回」
 
   const calculateScore = (hitPos: Point, shooterPos: Point, targetPos: Point) => {
     const distBetween = Math.sqrt((shooterPos.x - targetPos.x) ** 2 + (shooterPos.y - targetPos.y) ** 2);
@@ -622,7 +623,14 @@ export default function App() {
   }, [gameState?.currentPlayer, gameState?.status, gameState?.playerNames]);
 
   // Sound Effects Trigger
+  // ⚠️ isInitialMount：初次載入時瀏覽器尚未收到使用者互動，
+  //    AudioContext 不允許自動播放，因此跳過第一次的 playIntro()
   useEffect(() => {
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      soundService.stopBGM();
+      return; // 初次 mount 靜音，等使用者點選後才觸發
+    }
     if (showStartScreen) {
       soundService.playIntro();
       soundService.stopBGM();
