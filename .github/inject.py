@@ -11,8 +11,16 @@ def inject_secrets():
     # 定義要替換的環境變數對映
     # 格式: { "佔位符": "實際環境變數名稱" }
     replacements = {
-        "__GEMINI_API_KEY__": os.environ.get("GEMINI_API_KEY_REAL", ""),
-        "__FIREBASE_API_KEY__": os.environ.get("VITE_FIREBASE_API_KEY", ""),
+        # Gemini AI
+        "__GEMINI_API_KEY__":              os.environ.get("GEMINI_API_KEY_REAL", ""),
+        # Firebase 全部 7 個參數
+        "__FIREBASE_API_KEY__":            os.environ.get("VITE_FIREBASE_API_KEY", ""),
+        "__FIREBASE_AUTH_DOMAIN__":        os.environ.get("VITE_FIREBASE_AUTH_DOMAIN", ""),
+        "__FIREBASE_PROJECT_ID__":         os.environ.get("VITE_FIREBASE_PROJECT_ID", ""),
+        "__FIREBASE_STORAGE_BUCKET__":     os.environ.get("VITE_FIREBASE_STORAGE_BUCKET", ""),
+        "__FIREBASE_MESSAGING_SENDER_ID__":os.environ.get("VITE_FIREBASE_MESSAGING_SENDER_ID", ""),
+        "__FIREBASE_APP_ID__":             os.environ.get("VITE_FIREBASE_APP_ID", ""),
+        "__FIREBASE_DATABASE_ID__":        os.environ.get("VITE_FIREBASE_DATABASE_ID", ""),
     }
 
     print("Checking for secret injection...")
@@ -27,7 +35,10 @@ def inject_secrets():
                 new_content = content
                 for placeholder, secret_value in replacements.items():
                     if placeholder in content:
-                        print(f"Injecting into {filepath}: {placeholder}")
+                        if not secret_value:
+                            print(f"⚠️  WARNING: {placeholder} found but env var is empty! Check GitHub Secrets.")
+                        else:
+                            print(f"✅ Injecting into {filepath}: {placeholder}")
                         new_content = new_content.replace(placeholder, secret_value)
                 
                 if new_content != content:

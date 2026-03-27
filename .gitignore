@@ -4,5 +4,10 @@ dist/
 coverage/
 .DS_Store
 *.log
+
+# 本地環境變數（含真實密鑰，嚴禁上傳）
 .env*
 !.env.example
+
+# Firebase 設定檔（含真實 API Key，嚴禁上傳）
+firebase-applet-config.json
