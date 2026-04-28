@@ -1,7 +1,7 @@
 # 📈 專案開發進度表 (DEVELOPMENT_PROGRESS.md)
 
-> 最後更新：2026-04-28
-> 目前版本：**v3.6.x** (GitHub Pages 穩定運行)
+> 最後更新：2026-04-28（晚間）
+> 目前版本：**v3.7.0** ✅ 已部署上線
 
 ---
 
@@ -25,16 +25,32 @@
 - [x] 撰寫 `README_DETAIL.md` / `OPTIMIZATION_SUGGESTIONS.md` / `FUTURE_ROADMAP.md`
 
 ### 🟣 Phase 3：穩定性與整合（2026-03-25 ~ 04-28）
-- [x] **v3.6.0** 部署遷移：Vercel → GitHub Pages（修正資源路徑）
-- [x] **Firebase 雲端排行榜**：Firestore + 規則 (`firestore.rules`) + Serverless 安全部署
-  - 已分離 `src/firebase.ts`，使用 publishable key + 網域限制
-  - `firebase-applet-config.json` / `firebase-blueprint.json` 結構化設定
+- [x] **v3.6.0** 部署遷移：Vercel → GitHub Pages
+- [x] **Firebase 雲端排行榜**（Firestore + Serverless 安全部署）
 - [x] **AudioContext 自動播放警告修復**（兩次 patch）
-  - 延遲初始化 + 首次互動才解鎖音訊
-- [x] **Favicon 404 修復**：補齊 `favicon.ico` 多尺寸圖示
-- [x] **OG 社群卡片重置**：1200×630 標準尺寸 + 完整 Meta 標籤
-- [x] **直立模式開放**：移除強制橫向遮罩，手機直立可玩
-- [x] **音效服務模組化**：`src/services/soundService.ts` 抽離
+- [x] **Favicon 404 修復** + **OG 社群卡片** 1200×630
+- [x] **直立模式開放**：移除強制橫向遮罩
+- [x] **音效服務模組化**：`src/services/soundService.ts`
+
+### 🟡 Phase 4：A 階段全面優化 + Firebase 自有化遷移（2026-04-28 完成）✨
+- [x] **A1 依賴瘦身**：移除 `express` / `better-sqlite3` / `dotenv` / `@google/genai` / `@types/express`，dedupe vite。`node_modules` 從 686 → 562 packages
+- [x] **A2 ESLint 9 Flat Config**：含 `react-hooks` + `react-refresh` plugin，`npm run lint` 正式可用（0 error / 16 warning，warnings 為 hooks deps，B1 重構時收掉）
+- [x] **A3 抽常數**：建立 `src/game/constants.ts` 集中 GRAVITY / CANVAS / TURN_TIME / PLAYER_COLORS / LEADERBOARD_*
+- [x] **A4 直立模式 UX 補強**：`PortraitHint` 提示徽章（sessionStorage 記憶 dismiss）+ 觸控按鈕全面 ≥ 44×44px（WCAG）
+- [x] **A5 Firestore Rules 防刷分**：嚴格 schema、name regex `^\d{1,2}年\d{1,3}班\d{1,3}號$`、score 整數 0–9999、`timestamp == request.time`、預設 deny
+- [x] **A6 PWA**：`vite-plugin-pwa` autoUpdate + HTML NetworkFirst + Firestore NetworkOnly + 「立即更新」橫幅
+- [x] **🔥 Firebase 遷移**：`gen-lang-client-0869715626`（AI Studio sandbox）→ `monkey-pixel-clash`（owner: `ipad@mail2.smes.tyc.edu.tw`）
+- [x] **🔐 API Key 限制**：gcloud 套用 referrer (`cagoooo.github.io/*` + 3 個 localhost) + 4 個 API targets
+- [x] **🔑 GitHub Secrets**：7 個 `VITE_FIREBASE_*` 值用 `gh secret set` + `printf '%s'` pipe 自動同步
+- [x] **🔧 firebase CLI 設定檔**：`.firebaserc` / `firebase.json` / `firestore.indexes.json`
+- [x] **📦 部署驗證**：commit `e7aa2fc` push 成功，Actions 32s 部署，PWA 資產（manifest / sw.js）線上 200
+
+### 🟤 Phase 5：自動化基礎建設（2026-04-28，跨專案）
+- [x] **新建 skill** `firebase-stack-automation`：firebase + gcloud + gh 三角串聯工作流
+- [x] **更新 skill** `gcp-api-key-secure-create`：加入交叉引用
+- [x] **跨專案 CLAUDE.md**：寫入兩個 Google 帳號分工（`cagooo@gmail.com` 個人 / `ipad@mail2.smes.tyc.edu.tw` 學校 owner）
+- [x] **專案 memory**：`firebase_project_owner.md` 記錄 monkey-pixel-clash 擁有者
+- [x] **OAuth 非互動式繞過**：發現並文件化用 PowerShell `Start-Process` 開新 cmd 視窗的解法
 
 ---
 
@@ -42,136 +58,171 @@
 
 | 項目 | 狀態 |
 |---|---|
-| 版本 | `v3.6.x` |
-| 部署 | GitHub Pages（自動化 CI/CD）|
-| 後端 | Firebase Firestore（排行榜）|
-| 主要檔案 | `src/App.tsx` 仍為 **2802 行單檔**（待拆分）|
-| 待清理依賴 | `express`, `better-sqlite3`, `dotenv`（純前端不需要）|
-| 模組目錄 | `src/game/{components,hooks,worker}` 已建好但**仍空** |
+| **版本** | `v3.7.0` ✅ |
+| **正式站** | https://cagoooo.github.io/monkey/ |
+| **Firebase 專案** | `monkey-pixel-clash`（自有） |
+| **CI/CD** | GitHub Actions（32s build & deploy） |
+| **PWA** | ✅ 可離線、可加入主畫面、有更新橫幅 |
+| **Lint** | ✅ ESLint 9 Flat Config（0 error / 16 warning）|
+| **Type Check** | ✅ pass |
+| **Bundle Size** | ⚠️ index.js **851 KB**（gzip 231 KB），超過 vite 預設 500 KB 警告線 |
+| **npm audit** | ⚠️ **7 個漏洞**（1 critical / 5 high / 1 moderate）|
+| **GitHub Actions Node.js** | ⚠️ 仍用 Node 20，2026-09-16 前須升 Node 24 |
+| **App.tsx 行數** | 2802 行單檔（B1 待拆）|
+| **`src/game/`** | constants.ts ✅ + components/PortraitHint.tsx ✅，engine/ hooks/ worker/ 仍空 |
 
 ---
 
-# 🚀 未來優化與開發建議（詳細參考）
+# 🚀 未來優化與開發建議（v3.7.0 後新版藍圖）
 
-> 以下分為「立即可做」「中期重構」「長期擴充」三層，每項都附上**為什麼做**、**怎麼做**、**驗收標準**，方便照表操課。
+> 重新依**目前狀態**排列優先級。原 A 階段已全部完成，所以 B 階段升級為「下一個立即可做」群組，新加入「🅴 維運 Hardening」應對這次 build 後出現的 audit / bundle size / Node.js 棄用警告。
 
 ---
 
-## 🅰️ 立即可做（1～3 天可收斂）
+## 🅴 維運 Hardening（v3.7.0 後立即補，2 小時內可收斂）
 
-### A1. 清理 `package.json` 殘留依賴 ⭐⭐⭐⭐⭐
-**為什麼**：`express` / `better-sqlite3` / `dotenv` / `@types/express` 是早期 server 版本殘留，現在純前端 + Firebase 架構完全用不到，每次 `npm install` 多裝 20MB+，CI 也變慢。
+### E1. `npm audit fix` — 處理 7 個漏洞 ⭐⭐⭐⭐
+**為什麼**：`npm install` 後跳出 `7 vulnerabilities (1 moderate, 5 high, 1 critical)`，雖然多半是傳遞依賴，但 critical 不該放著。
 **怎麼做**：
 ```bash
-npm uninstall express better-sqlite3 dotenv @types/express
+npm audit                    # 先看是哪些套件
+npm audit fix                # 先試非破壞性修復
+npm run typecheck && npm run build   # 確認沒壞
+# 若還剩 high/critical：
+npm audit fix --force        # 接受可能的 breaking change
+npm run build                # 再驗一次
 ```
-順手檢查 `@google/genai` 是否真的有用到（沒用就一起拔）。
-**驗收**：`npm run build` 仍 pass、`dist/` 大小不變、`node_modules` 縮 30%+。
+**驗收**：`npm audit` 顯示 `0 critical / 0 high`。
 
-### A2. 加上 `npm run typecheck` + `npm run lint` 真的能用 ⭐⭐⭐⭐
-**為什麼**：目前 `lint` 只是 `tsc --noEmit`，沒有 ESLint，大檔案容易藏 dead code 與 any。
-**怎麼做**：
-- 加入 `eslint`、`@typescript-eslint/*`、`eslint-plugin-react-hooks`
-- `npm run lint` 改為真 ESLint，`npm run typecheck` 才是 `tsc --noEmit`
-- CI workflow 補一步 `npm run lint && npm run typecheck`
-**驗收**：CI 紅綠燈反映程式碼健康。
+### E2. 升級 GitHub Actions Node.js 20 → 24 ⭐⭐⭐
+**為什麼**：CI log 警告 `Node.js 20 actions are deprecated. Will be removed 2026-09-16.`。提早升避免某天突然紅燈。
+**怎麼做**：編輯 `.github/workflows/deploy.yml`：
+```yaml
+- name: Setup Node.js ⚙️
+  uses: actions/setup-node@v4
+  with:
+    node-version: 22       # 或 24 LTS
+    cache: 'npm'
+```
+然後本地也跑：
+```bash
+nvm use 22                 # 或 fnm / volta
+npm ci && npm run build    # 確認 build 不壞
+```
+**驗收**：CI run 不再有 Node 20 deprecation annotation。
 
-### A3. 把 `App.tsx` **常數**先抽出來 ⭐⭐⭐⭐
-**為什麼**：拆 2802 行很可怕，但只把 `GRAVITY`、`WIND_RANGE`、`BUILDING_MIN/MAX`、`POWER_UP_TYPES` 之類**常數**先搬到 `src/game/constants.ts` 是 30 分鐘內可做的零風險重構。
-**怎麼做**：
+### E3. Bundle Size 優化（841 KB → 拆 chunk）⭐⭐⭐
+**為什麼**：vite 警告 `chunks larger than 500 kB`。手機上首次載入慢，PWA precache 也膨脹。
+**怎麼做**：在 `vite.config.ts` 加 `manualChunks`：
 ```ts
-// src/game/constants.ts
-export const PHYSICS = { GRAVITY: 0.3, AIR_RESISTANCE: 0.99 } as const;
-export const POWERUPS = { GIANT_SCALE: 10, ACID_RADIUS: 80 } as const;
+build: {
+  rollupOptions: {
+    output: {
+      manualChunks: {
+        'react-vendor':    ['react', 'react-dom'],
+        'firebase-vendor': ['firebase/app', 'firebase/firestore', 'firebase/auth'],
+        'motion-vendor':   ['motion/react'],
+        'icons-vendor':    ['lucide-react'],
+      },
+    },
+  },
+}
 ```
-**驗收**：常數搜尋只剩一處定義，行為無變化。
+最大效益是把 `firebase` 拆出來（用戶玩遊戲時不需要等它）。
+**驗收**：主 chunk < 400 KB，總大小不變但首屏快很多。
 
-### A4. 直立模式 UX 補強 ⭐⭐⭐⭐
-**為什麼**：剛開放直立但 UI 是橫向設計的，按鈕可能擠在一起。
-**怎麼做**：
-- `useEffect` 監聽 `window.matchMedia('(orientation: portrait)')`
-- 直立時 Canvas 改 9:16 比例，按鈕 Stack 換成上下排版
-- 角度盤改大、力道條變直立
-**驗收**：iPhone SE / iPad Mini 直立都能順暢操作。
+### E4. Firestore Indexes 規劃 ⭐⭐
+**為什麼**：目前 `getTopScores` 用 `orderBy('score', 'desc').limit(5)`，單欄位排序不需 composite index。但未來加「依年級篩選」「依月份篩選」就會需要。
+**怎麼做**：先預留 `firestore.indexes.json`（已建空），需要時：
+```json
+{
+  "indexes": [
+    {
+      "collectionGroup": "leaderboard",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "grade", "order": "ASCENDING" },
+        { "fieldPath": "score", "order": "DESCENDING" }
+      ]
+    }
+  ]
+}
+```
+然後 `firebase deploy --only firestore:indexes`。
 
-### A5. Firebase 排行榜防刷分 ⭐⭐⭐⭐⭐
-**為什麼**：純前端寫 Firestore = 任何人開 console 都能塞假分數。
-**怎麼做**（兩擇一，由低到高）：
-1. **Firestore Rules 限制**（最低成本）：限制 `score < 合理上限`、`createdAt == request.time`、單 IP/anon UID 每分鐘最多 1 筆。
-2. **Cloud Function 中介**（推薦）：寫 `submitScore` Callable Function，前端送遊戲 replay log，後端重播驗證後寫入。
-**驗收**：用 curl 直打 Firestore REST 寫不進去。
-
-### A6. 加入 PWA + Cache-Bust 機制 ⭐⭐⭐
-**為什麼**：你已部署在 GitHub Pages，PWA 可離線玩、加到主畫面，但 SW 快取常導致「我改了但學生還看舊版」。
-**怎麼做**：
-- `vite-plugin-pwa` 加 manifest + service worker
-- `registerSW({ immediate: true })` + 顯示「有新版本，重新整理」橫幅
-- HTML 內加 `<meta name="version" content="3.6.x">` 方便驗證使用者跑哪版
-**驗收**：手機可加到主畫面、離線進入仍能玩、推新版後有提示。
+### E5. Sentry 或 Firebase Crashlytics ⭐⭐
+**為什麼**：目前 production 錯誤完全黑盒。學生回報「我玩到一半當掉了」根本查不到原因。
+**怎麼做**（任一）：
+- **Sentry 免費 5000 events/月**：`@sentry/react` SDK，5 行設定
+- **Firebase Crashlytics**：已有 Firebase 專案，更整合
+**驗收**：故意 throw 一個 error，能在 dashboard 看到。
 
 ---
 
-## 🅱️ 中期重構（1～2 週）
+## 🅱️ 中期重構（B 階段，1～2 週）— 下一個重點
 
-### B1. App.tsx 拆分 ⭐⭐⭐⭐⭐（高優先）
-**目標結構**：
+### B1. **拆分 `App.tsx`**（最高優先）⭐⭐⭐⭐⭐
+**現況**：`App.tsx` 仍 2802 行單檔，所有 state / 物理 / 繪圖 / UI 混在一起。
+**目標結構**（已建好空殼）：
 ```
 src/
 ├── game/
-│   ├── constants.ts           # 物理 / 道具 / 顏色
-│   ├── types.ts               # Entity 型別
+│   ├── constants.ts           ✅ 已完成（A3）
+│   ├── types.ts               # 從 src/types.ts 搬進來
 │   ├── engine/
 │   │   ├── physics.ts         # 拋物線 / 重力 / 風 / 阻力
 │   │   ├── collision.ts       # 像素碰撞 / AABB
 │   │   ├── terrain.ts         # 地形生成 / 破壞
-│   │   └── ai.ts              # （未來）電腦對手
+│   │   └── ai.ts              # （C3 用）電腦對手
 │   ├── hooks/
 │   │   ├── useGameLoop.ts     # requestAnimationFrame
 │   │   ├── useInput.ts        # 觸控 / 滑鼠 / 鍵盤
-│   │   └── useGameState.ts    # 回合 / 分數 / 道具
+│   │   ├── useGameState.ts    # 回合 / 分數 / 道具
+│   │   └── useFullscreen.ts   # 已有邏輯抽出
 │   ├── components/
+│   │   ├── PortraitHint.tsx   ✅ 已完成（A4）
 │   │   ├── CanvasStage.tsx    # 純繪圖
 │   │   ├── HUD.tsx            # 角度 / 力道 / 風向
 │   │   ├── StartScreen.tsx
 │   │   ├── WinnerScreen.tsx
-│   │   └── Leaderboard.tsx
+│   │   ├── Leaderboard.tsx
+│   │   └── ScoreEntryModal.tsx
 │   └── worker/
-│       └── physics.worker.ts  # （見 B3）
+│       └── physics.worker.ts  # （B3 用）
 ├── services/
-│   ├── soundService.ts        # ✅ 已存在
+│   ├── soundService.ts        ✅
 │   └── leaderboardService.ts  # 包 firebase 呼叫
-├── firebase.ts
-├── App.tsx                    # 只剩路由 / 全域 Provider
+├── App.tsx                    # 縮到 ≤ 200 行（只剩 Provider/路由）
 └── main.tsx
 ```
-**做法**：每次 commit 只搬一個檔，跑一次遊戲確認沒壞，再搬下一個。**禁止一次大爆炸式重構**。
-**驗收**：`App.tsx` 縮到 200 行內、各 module 可獨立測試。
+**做法紀律**：每次 commit 只搬一個檔，跑一次遊戲確認沒壞，再搬下一個。**禁止一次大爆炸式重構**。
+**驗收**：`App.tsx` ≤ 200 行；ESLint warnings 從 16 降至 < 5。
 
 ### B2. 為物理引擎寫單元測試 ⭐⭐⭐⭐
-**為什麼**：拋物線、風力、碰撞是純函式，最容易測也最容易回歸。
+**為什麼**：拋物線、風力、碰撞是純函式，最容易測也最容易回歸。B1 拆完就立刻補測試鎖住正確性。
 **怎麼做**：
-- 加 `vitest`（Vite 原生整合，零設定）
-- 測試 `calcTrajectory(angle, power, wind)`、`pixelCollide(map, x, y)`
-**驗收**：CI 會跑測試，覆蓋率 ≥ 60% 物理層。
+```bash
+npm i -D vitest @vitest/ui
+```
+測試 `calcTrajectory`、`pixelCollide`、`getGroundY` 等核心數學函式。
+**驗收**：CI 跑測試，物理層覆蓋率 ≥ 60%。
 
-### B3. 把碰撞 / 地形破壞搬到 Web Worker ⭐⭐⭐
-**為什麼**：地形破壞時要重算 ImageData，大爆炸會掉幀。
-**怎麼做**：
-- `physics.worker.ts` 收 `{ map, x, y, radius }` → 回 `{ newMap, affectedRegions }`
-- 主執行緒只負責畫畫
-**驗收**：iPhone 11 上連續 5 次大爆炸不掉幀。
+### B3. Web Worker 物理運算 ⭐⭐⭐
+**為什麼**：地形破壞要重算 ImageData，大爆炸時 Canvas 會掉幀。
+**怎麼做**：`physics.worker.ts` 收 `{ map, x, y, radius }` → 回 `{ newMap, affectedRegions }`，主執行緒只畫畫。
+**驗收**：iPhone 11 連續 5 次大爆炸不掉幀。
 
-### B4. 風力視覺化 ⭐⭐⭐⭐
-**為什麼**：目前風力只是冷冰冰的數字，玩家很難「感覺」風。
+### B4. 風力視覺化 ⭐⭐⭐⭐ ⚡ CP 值最高
+**為什麼**：目前風力只是冷數字，玩家很難「感覺」風。
 **怎麼做**：
-- 螢幕上方畫旗幟，旗幟飄動角度 = 風力 × 30°
-- 香蕉飛行時加微弱橫向粒子流（Canvas `globalAlpha = 0.3`）
+- 螢幕上方畫旗幟，飄動角度 = 風力 × 30°
 - 強風時背景雲飄得更快
-**驗收**：玩家不看數字也知道風往哪吹。
+- 香蕉飛行時加微弱橫向粒子流
+**驗收**：玩家不看數字也能判斷風向。
 
 ### B5. 道具系統可擴充化 ⭐⭐⭐
-**為什麼**：現在 10X / ACID 是 if-else 寫死的，新增道具要改一堆地方。
-**怎麼做**：改成註冊表模式
+**為什麼**：現在 10X / ACID 是 if-else 寫死，新增道具改一堆地方。
+**怎麼做**：改成註冊表
 ```ts
 type PowerUp = {
   id: string;
@@ -182,118 +233,162 @@ type PowerUp = {
 };
 const POWERUPS: Record<string, PowerUp> = { giant: {...}, acid: {...} };
 ```
-新增「三連發」「橡皮彈」「凍結」只要加一筆。
-**驗收**：3 行內就能加新道具。
+**驗收**：3 行內加新道具。
+
+### B6. **Cloud Function 防刷分（A5 的進化版）** ⭐⭐⭐⭐
+**為什麼**：A5 的 Rules 防護擋不住「合法格式但短時間連續灌假分」。要徹底防刷分必須加伺服端驗證。
+**怎麼做**：
+1. 升 Firebase Blaze 方案（Cloud Functions 必要 — 注意配 Budget Alert）
+2. 寫 `submitScore` Callable Function：前端送 replay log（每回合的角度/力道/結果）
+3. 後端用相同物理引擎重播驗證 → 合理才寫入
+4. 改 `firestore.rules`：`allow create: if false`（只允許 Function 寫入）
+**驗收**：直接打 Firestore REST API 寫不進去；用 DevTools 改前端送假分被擋。
+
+> ⚠️ 升 Blaze 前看 `gemini-free-tier-first` skill 經驗：Blaze 開了不代表會收費，配 Budget Alert + maxInstances 仍可保 $0/月。
 
 ---
 
-## 🅲️ 長期擴充（願景，1 個月以上）
+## 🅲 長期擴充（C 階段，1 個月以上）
 
 ### C1. 線上即時對戰（WebRTC / PeerJS）⭐⭐⭐⭐⭐
-**為什麼**：本地雙人需要兩人共用一台裝置，遠距朋友玩不到。
-**架構建議**：
-- **訊號伺服器**：Firebase Realtime Database（免費額度足夠教室用）
-- **連線層**：PeerJS（封裝 WebRTC，比 Socket.io 不用維護後端）
-- **同步資料**：只送 `{ angle, power, powerUp }` 三個值（< 50 bytes/次），雙方用相同 seed 算物理 → **rollback netcode** 雛形
+**架構**：
+- 訊號伺服器：Firebase Realtime Database（免費額度足夠教室用）
+- 連線層：PeerJS（封裝 WebRTC）
+- 同步資料：只送 `{ angle, power, powerUp }`（< 50 bytes/次），雙方相同 seed 算物理 → rollback netcode 雛形
 **踩雷預警**：
-- WebRTC 在校園 NAT/防火牆常被擋，要備援 TURN server（可用免費的 Open Relay）
-- 雙方亂數種子要同步，否則建築長不一樣
+- 校園 NAT/防火牆常擋 WebRTC，要備援 TURN server（Open Relay 免費）
+- 雙方亂數種子要同步否則建築長不一樣
 
 ### C2. 帳號系統 + 跨裝置同步 ⭐⭐⭐
-**為什麼**：學生在學校玩、回家想接著玩排行榜。
-**怎麼做**：
-- Firebase Auth Google OAuth 登入（學校 G Suite 帳號就能用）
-- 用 Supabase 也行（如果想轉 stack）
+**為什麼**：學生在學校玩，回家想接著玩排行榜。
+**做法**：
+- Firebase Auth Google OAuth（學校 G Suite 帳號就能用 — 但要先驗證學校沒鎖第三方 OAuth）
 - 紀錄個人最佳成績、解鎖道具、累積經驗
-**踩雷預警**：學校 G Suite 帳號可能被組織策略禁用第三方 OAuth，要先測試。
+- 此時才會用到 **Authorized Domains**（前面延後的步驟，這時候設）
 
 ### C3. AI 電腦對手（Gemini API）⭐⭐⭐⭐
-**為什麼**：單人模式 = 沒朋友也能玩，是國小資訊課最常見的剛需。
-**做法**（從低到高）：
-1. **數學 AI**：給定地形、風力，解最佳拋物線（封閉解）+ 隨機誤差（難度）
-2. **Gemini AI 嘴砲**：每回合產生一句嘲諷台詞，用免費層 Gemini Flash 即可
-3. **強化學習**（玩具）：用 TensorFlow.js 訓練猴子自學瞄準（純科普用）
-**驗收**：簡單/普通/困難三難度，困難模式能用「橡皮彈反彈攻擊」。
+> ⚠️ 觸發 `gemini-free-tier-first` skill — 學校教學用一定要設計成永遠停留在免費層。
+
+**做法（從低到高）**：
+1. **數學 AI**：給定地形/風力解最佳拋物線（封閉解）+ 隨機誤差（難度）
+2. **Gemini AI 嘴砲**：每回合產生一句嘲諷台詞（用免費層 Gemini Flash）
+3. **強化學習玩具**：TensorFlow.js 訓練猴子自學瞄準（純科普）
+**驗收**：簡單 / 普通 / 困難三難度，困難能用「橡皮彈反彈攻擊」。
 
 ### C4. 多地圖 + 主題系統 ⭐⭐⭐⭐
-- **太空**：低重力、流星背景、香蕉飛超遠
-- **深海**：高阻力、氣泡特效、香蕉漂浮感
-- **校園**：把建築改成教學樓、操場（可放老師照片當頭目 🐵）
-- **節慶**：聖誕雪花、春節鞭炮（爆炸換成煙火粒子）
-**做法**：地圖設定變 JSON
+- **太空**：低重力 + 流星背景 + 香蕉飛超遠
+- **深海**：高阻力 + 氣泡特效 + 香蕉漂浮感
+- **校園**：建築換成教學樓 / 操場
+- **節慶**：聖誕雪花 / 春節鞭炮（爆炸換煙火粒子）
+**做法**：地圖設定變 JSON（B1 拆完更好做）
 ```json
-{
-  "id": "space",
-  "gravity": 0.1,
-  "wind": [-0.5, 0.5],
-  "bgLayers": ["stars", "meteors"],
-  "bananaTrail": "glow"
-}
+{ "id": "space", "gravity": 0.1, "wind": [-0.5, 0.5], "bgLayers": ["stars"], "bananaTrail": "glow" }
 ```
 
 ### C5. Sprite 動畫系統 ⭐⭐⭐
-**為什麼**：代碼畫的猴子動作有限，貼圖能解鎖「投擲、歡呼、受傷、待機」豐富情緒。
-**做法**：
-- 用免費 Aseprite 或 Piskel 做 32×32 像素風 sprite sheet
-- Canvas `drawImage(sheet, sx, sy, sw, sh, dx, dy, dw, dh)` 切幀
-- **建議用 sprite 而不是 SVG**：Canvas 直接 drawImage 比 path 渲染快很多
-**參考授權**：Kenney.nl 有大量 CC0 免費素材
+**素材**：Kenney.nl 大量 CC0 免費像素風 sprite
+**技術**：Canvas `drawImage` 切幀（比 SVG path 快很多）
+**驗收**：猴子有「投擲、歡呼、受傷、待機」4 種狀態 sprite
 
-### C6. 國小資訊課教學整合 ⭐⭐⭐⭐
-（這個你是用戶主場）
-- **「程式邏輯」教學模式**：把角度/力道改成「程式積木」，學生用 Blockly 拼出
-  ```
-  當輪到我時：
-    讀取 風力
-    計算 角度 = 45 + 風力 × 2
-    發射 香蕉
-  ```
-- **錄影回放**：每場結束生成 GIF，學生可分享給家長
-- **班級排行榜**：用 `?class=601` query string 篩選同班分數
+### C6. **國小資訊課教學整合** ⭐⭐⭐⭐⭐ ⚡ 你最強的應用情境
+你是國小資訊老師（系統 memory），這條是專案最有差異化的方向：
+
+#### C6.1 「程式積木」模式
+把角度/力道改成 Blockly 程式積木，學生用拼的：
+```
+當輪到我時：
+  讀取 風力
+  計算 角度 = 45 + 風力 × 2
+  發射 香蕉
+```
+讓「玩遊戲」=「學程式邏輯」。
+
+#### C6.2 班級排行榜
+用 `?class=601` query string 篩選同班分數。Firestore 要加 `class` 欄位 + composite index。
+
+#### C6.3 錄影回放 GIF 分享
+每場結束生成 GIF，學生分享給家長。
+- 用 `gif.js` 把每幀 Canvas 截下來合成
+- 或用瀏覽器原生 `MediaRecorder` 錄成 webm
+
+#### C6.4 老師後台
+- 看哪些班級活躍
+- 哪個道具最常用
+- 平均一場時長
+- → 結合 Firebase Analytics + 簡單的 admin 頁面（用學校 Gmail 登入限制）
 
 ### C7. 無障礙與包容性 ⭐⭐⭐
-**為什麼**：學校有色弱、視障學生，符合教育部數位平權方向。
+**為什麼**：學校有色弱、視障學生，符合教育部數位平權。
 **做法**：
-- 紅綠色弱模式（雙方改成藍/橙）
+- 紅綠色弱模式（雙方改藍/橙）
 - 鍵盤可全程操作（Tab + Enter）
-- 螢幕閱讀器標籤（`aria-label="當前玩家：紅方"`）
-- 動畫減弱模式（`prefers-reduced-motion`）
+- 螢幕閱讀器 `aria-label`
+- `prefers-reduced-motion` 動畫減弱模式
 
 ---
 
-## 🅳️ 維運與品質指標（持續）
+## 🅳 文件與品質指標（持續性）
 
 ### D1. 觀測性
-- **Firebase Analytics**：哪個道具最常用？平均一場幾分鐘？
-- **Sentry**（免費 5000 events/月）：抓 production 錯誤
-- **Lighthouse CI**：每次 PR 自動跑 Performance / A11y / SEO 分數
+- [x] **`<meta app-version>`** 已加（v3.7.0）
+- [ ] **Firebase Analytics**：哪個道具最常用？平均一場幾分鐘？（C 階段配合 Crashlytics）
+- [ ] **Lighthouse CI**：每次 PR 自動跑 Performance / A11y / SEO 分數
+- [ ] **Sentry/Crashlytics**（見 E5）
 
 ### D2. 文件
-- [ ] 補 `CONTRIBUTING.md`（你未來想開源的話）
-- [ ] 補 `ARCHITECTURE.md`（重構後畫一張系統圖）
-- [ ] README 加上線 Demo 連結 + GIF 動圖（最吸睛）
+- [x] CHANGELOG v3.7.0
+- [ ] `CONTRIBUTING.md`（你未來想開源的話）
+- [ ] `ARCHITECTURE.md`（B1 重構後畫一張系統圖）
+- [ ] README 加上 Demo GIF 動圖（最吸睛）
+- [ ] 把舊的 `OPTIMIZATION_SUGGESTIONS.md` / `FUTURE_ROADMAP.md` 標記為 archived（內容已被本檔取代）
 
 ### D3. 安全清單
-- [x] Firebase API Key 已加網域限制
-- [ ] 定期 rotate API Key（建議 90 天）
-- [ ] `npm audit` 加進 CI（高危漏洞 fail build）
+- [x] Firebase API Key 網域限制（v3.7.0 完成）
+- [x] Firebase API Key API targets 限制
+- [x] Firestore Rules 嚴格 schema
+- [x] GitHub Secrets 同步新值
+- [ ] 定期 rotate API Key（建議 90 天，下次 2026-07-28 前）
+- [ ] `npm audit` 加進 CI（high/critical fail build）— 見 E1
 - [ ] Dependabot 自動 PR 升級依賴
+- [ ] **舊 sandbox `gen-lang-client-0869715626`** 因不是你 owner 沒法刪，建議：
+  - `cagoooo/monkey` repo 設定 → Secret scanning 啟用
+  - 把舊 API Key (`AIzaSyBeRPllpivQYquLNLFava4IiqHVjb1j62k`) 從 git 歷史 purge（用 `git filter-repo` 或接受它仍在歷史中）
+  - 新版本徹底切乾淨即可
 
 ---
 
-## 🎯 建議的執行順序（我的優先級觀點）
+## 🎯 我建議的下一步執行順序
 
 | # | 項目 | 預估工時 | 影響 |
 |---|------|---------|------|
-| 1 | A1 清理依賴 | 0.5h | 即時瘦身 |
-| 2 | A5 排行榜防刷 | 2h | 安全性必補 |
-| 3 | A3 抽常數 | 0.5h | 為 B1 鋪路 |
-| 4 | A6 PWA | 3h | 學生體驗大加分 |
-| 5 | B1 拆 App.tsx | 1～2 週 | 解鎖後續所有擴充 |
-| 6 | B4 風力視覺化 | 4h | CP 值最高的 UX 升級 |
-| 7 | C3 AI 電腦對手 | 1 週 | 單人模式上線 |
-| 8 | C1 線上對戰 | 2～3 週 | 大功能，最後做 |
+| **1** | **E1 npm audit fix** | 30 分鐘 | 排除 critical 漏洞 |
+| **2** | **E2 Node.js 24 升級** | 30 分鐘 | 提早閃 9 月棄用 |
+| **3** | **E3 Bundle 拆 chunk** | 1 小時 | 手機載入快 30% |
+| **4** | **B4 風力視覺化** | 4 小時 | UX 升級 CP 值最高 |
+| **5** | **B1 拆 App.tsx** | 1～2 週 | 解鎖後續所有擴充 |
+| **6** | **B6 Cloud Function 防刷分** | 1 天 | A5 的徹底進化版 |
+| **7** | **C3 AI 電腦對手 (Gemini)** | 1 週 | 單人模式上線 |
+| **8** | **C6 教學整合** | 持續性 | 你的最強差異化 |
 
 ---
 
-> 💡 **建議**：每完成一項就在本表打勾並 commit，CHANGELOG 同步更新。重構期間維持「一次只做一件事 + 隨時可回滾」的紀律。
+## 💎 v3.7.0 結算
+
+這次一波到位的成就：
+
+| 類別 | 提升 |
+|---|---|
+| **依賴** | 686 → 562 套件（-18%）|
+| **Firestore Rules** | 寬鬆 → 嚴格 schema + regex + 整數限制 |
+| **API Key 安全** | 0 限制 → referrer 4 條 + API targets 4 個 |
+| **PWA** | 無 → 可離線 / 加主畫面 / 自動更新 |
+| **直立模式** | 強制橫屏 → 直立可玩 + 觸控 ≥ 44px |
+| **程式碼模組** | App.tsx 單檔 → constants.ts 抽出（B1 起步）|
+| **Lint** | 無 → ESLint 9 + react-hooks |
+| **自動化** | 手動點 console → firebase + gcloud + gh 三角全自動 |
+| **Firebase 控制權** | AI Studio sandbox 借用 → 100% 自有專案 |
+| **Skill 沉澱** | — → `firebase-stack-automation` 跨專案可重用 |
+
+> 🎮 **接下來建議**：先做 E1～E3 三件小事（總共 2 小時內），讓 v3.7.x 維運面更穩；之後可以平行進 B4 風力視覺化（給玩家立刻有感）和 B1 拆 App.tsx（解鎖一切擴充）。Cloud Function 防刷分（B6）建議跟學生實際使用排行榜的時間搭配 — 看到有人開始刷分再上會比較有動力。
+
+> 💡 **特別提示**：你已經有完整的 firebase + gcloud + gh 自動化串聯能力，未來建任何新教學 app 都能在 30 分鐘內完成「建專案 + 部署 rules + 設限制 + 同步 secrets」全流程。這個基礎設施紅利會持續產生複利效應。
