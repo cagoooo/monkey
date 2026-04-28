@@ -15,8 +15,9 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { Trophy, Wind, RotateCcw, Play, Maximize, Minimize, Volume2, VolumeX, Medal, User, Send } from 'lucide-react';
 import { soundService } from './services/soundService';
-import { getTopScores, saveHighScore, LeaderboardEntry } from './firebase';
+import { saveHighScore, LeaderboardEntry } from './firebase';
 import { PortraitHint } from './game/components/PortraitHint';
+import { useLeaderboard } from './game/hooks/useLeaderboard';
 
 const COLORS = PLAYER_COLORS;
 
@@ -153,8 +154,8 @@ export default function App() {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isPseudoFullscreen, setIsPseudoFullscreen] = useState(false);
   const [isMuted, setIsMuted] = useState(soundService.isMuted());
-  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
-  
+  const leaderboard = useLeaderboard();
+
   const DEFAULT_LEADERBOARD: LeaderboardEntry[] = Array(5).fill(null).map((_, i) => ({
     id: `default-${i}`,
     name: '301-27號',
@@ -365,13 +366,6 @@ export default function App() {
       window.removeEventListener('resize', handleResize);
       window.removeEventListener('orientationchange', handleResize);
     };
-  }, []);
-
-  useEffect(() => {
-    const unsubscribe = getTopScores((scores) => {
-      setLeaderboard(scores);
-    });
-    return () => unsubscribe();
   }, []);
 
   useEffect(() => {
@@ -1233,6 +1227,30 @@ export default function App() {
     ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 
     const time = Date.now() / 1000;
+
+    // ────────────────────────────────────────────────
+    // Wind Visualization Layer 1: 背景雲層（風力推動）
+    // 雲速 = 基礎 0.3 px/frame + 風力強度，方向跟著 wind 正負
+    // ────────────────────────────────────────────────
+    const windVal = gameState.wind;
+    const cloudSpeed = (0.3 + Math.abs(windVal) * 30) * (windVal >= 0 ? 1 : -1);
+    const cloudOffset = Date.now() / 50 * cloudSpeed;
+    const clouds = [
+      { baseX:  50, y: 60,  w: 32, h: 12 },
+      { baseX: 230, y: 35,  w: 26, h: 10 },
+      { baseX: 410, y: 95,  w: 38, h: 14 },
+      { baseX: 580, y: 55,  w: 30, h: 12 },
+      { baseX: 720, y: 80,  w: 34, h: 12 },
+    ];
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.55)';
+    const wrapW = CANVAS_WIDTH + 200;
+    clouds.forEach(c => {
+      const x = ((c.baseX + cloudOffset) % wrapW + wrapW) % wrapW - 100;
+      // 像素風雲：上下兩條 + 兩端圓潤一點的小方塊
+      ctx.fillRect(x, c.y, c.w, c.h);
+      ctx.fillRect(x + c.w * 0.2, c.y - c.h * 0.4, c.w * 0.6, c.h * 0.5);
+      ctx.fillRect(x + c.w * 0.4, c.y - c.h * 0.7, c.w * 0.3, c.h * 0.4);
+    });
 
     // Apply Screen Shake
     if (gameState.shake > 0) {
@@ -2164,7 +2182,39 @@ export default function App() {
       ctx.restore();
     }
 
-    // Draw Wind Indicator
+    // ────────────────────────────────────────────────
+    // Wind Visualization Layer 2: 頂部旗幟（風向風強）
+    // wind 範圍 -0.1 ~ +0.1：旗幟長度 |wind|×500，左右翻轉
+    // 飄動頻率 = 3 + |wind|×80（風大抖更快）
+    // ────────────────────────────────────────────────
+    const flagPoleX = 30;
+    const flagPoleY = 18;
+    const flagPoleH = 50;
+    ctx.fillStyle = '#888';
+    ctx.fillRect(flagPoleX, flagPoleY, 3, flagPoleH);
+    // Pole top knob
+    ctx.fillStyle = '#FFD700';
+    ctx.fillRect(flagPoleX - 1, flagPoleY - 3, 5, 4);
+
+    if (Math.abs(windVal) > 0.001) {
+      const flagDir = windVal >= 0 ? 1 : -1;
+      const flagW = Math.min(Math.abs(windVal) * 350, 50);
+      const flagH = 14;
+      const flutter = Math.sin(time * (3 + Math.abs(windVal) * 80)) * 3;
+      ctx.fillStyle = windVal > 0 ? '#FF4444' : '#44AAFF';
+      ctx.beginPath();
+      ctx.moveTo(flagPoleX + 3, flagPoleY + 2);
+      ctx.lineTo(flagPoleX + 3 + flagDir * flagW, flagPoleY + 2 + flutter);
+      ctx.lineTo(flagPoleX + 3 + flagDir * flagW, flagPoleY + 2 + flagH + flutter);
+      ctx.lineTo(flagPoleX + 3, flagPoleY + 2 + flagH);
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    // ────────────────────────────────────────────────
+    // Wind Visualization Layer 3: 底部 HUD 強化版
+    // 條狀指示 + 兩端方向箭頭 + 數字
+    // ────────────────────────────────────────────────
     const windX = CANVAS_WIDTH / 2;
     const windY = CANVAS_HEIGHT - 30;
     ctx.strokeStyle = '#FFFFFF';
@@ -2173,10 +2223,29 @@ export default function App() {
     ctx.moveTo(windX - 50, windY);
     ctx.lineTo(windX + 50, windY);
     ctx.stroke();
-    
-    ctx.fillStyle = '#FF5555';
-    const windPower = gameState.wind * 500;
+    // Center tick
+    ctx.beginPath();
+    ctx.moveTo(windX, windY - 6);
+    ctx.lineTo(windX, windY + 6);
+    ctx.stroke();
+
+    // Power bar
+    ctx.fillStyle = windVal > 0 ? '#FF5555' : '#5555FF';
+    const windPower = windVal * 500;
     ctx.fillRect(windX, windY - 5, windPower, 10);
+
+    // 端點箭頭：當風力夠強才出現（| > 0.02），方向與風一致
+    if (Math.abs(windVal) > 0.02) {
+      const arrowDir = windVal > 0 ? 1 : -1;
+      const arrowX = windX + arrowDir * 55;
+      ctx.fillStyle = windVal > 0 ? '#FF8888' : '#88AAFF';
+      ctx.beginPath();
+      ctx.moveTo(arrowX, windY);
+      ctx.lineTo(arrowX - arrowDir * 8, windY - 6);
+      ctx.lineTo(arrowX - arrowDir * 8, windY + 6);
+      ctx.closePath();
+      ctx.fill();
+    }
 
   }, [gameState]);
 

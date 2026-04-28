@@ -1,5 +1,24 @@
 # 📜 更新日誌 (CHANGELOG)
 
+## [3.8.0] - 2026-04-28（晚間）
+
+### 🛡️ 維運 Hardening (E 階段)
+- **E1 npm audit 0 漏洞**：用 `overrides` 強制升 `serialize-javascript@^7.0.5`，含 vite-plugin-pwa 1.2.0 升級。從 7 個漏洞（1 critical / 5 high / 1 moderate）降到 **0**
+- **E2 Node.js 升級**：CI 從 Node 20 → **Node 22 LTS**，避開 2026-09-16 棄用線
+- **E3 Bundle 拆 chunk**：在 `vite.config.ts` 加 `manualChunks`，主程式從 **851 KB → 247 KB**（gzip 從 231 KB → 76 KB），firebase / motion / react / icons 各自獨立 vendor chunk
+
+### 🌬️ 風力視覺化 (B4)
+- **背景雲層**：5 朵像素風雲在天空飄動，速度 = 0.3 + |風力|×30 px/frame，方向跟著風向
+- **頂部旗幟**：左上角旗桿，旗幟長度反映風強，正風紅 / 逆風藍，飄動頻率 = 3 + |wind|×80（風大抖更快）
+- **底部 HUD 強化**：原本紅條 + 中央刻度 + 端點箭頭（風強 > 0.02 時才出現）+ 正反向變色
+- 玩家不看數字也能憑視覺判斷風向風強
+
+### 🧱 App.tsx 拆分 第一波 (B1.1)
+- `src/types.ts` → **`src/game/types.ts`**（舊路徑改 re-export shim 維持相容）
+- 新增 **`src/game/hooks/useLeaderboard.ts`**：封裝 Firestore onSnapshot 訂閱
+- App.tsx 移除 13 行 leaderboard state + 訂閱 useEffect
+- 為 B1 後續波次（拆 engine / 拆 components）鋪路
+
 ## [3.7.0] - 2026-04-28
 
 ### ✨ 新增功能

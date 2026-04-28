@@ -71,6 +71,24 @@ export default defineConfig(({mode}) => {
         '@': path.resolve(__dirname, '.'),
       },
     },
+    build: {
+      // 把 vendor 拆成獨立 chunks，避免單一 index.js 太肥，
+      // 也讓 PWA precache 在更新時只需重抓變動的部分。
+      rollupOptions: {
+        output: {
+          manualChunks: {
+            'react-vendor': ['react', 'react-dom'],
+            'firebase-vendor': [
+              'firebase/app',
+              'firebase/firestore',
+              'firebase/auth',
+            ],
+            'motion-vendor': ['motion/react'],
+            'icons-vendor': ['lucide-react'],
+          },
+        },
+      },
+    },
     server: {
       // HMR is disabled in AI Studio via DISABLE_HMR env var.
       // Do not modify—file watching is disabled to prevent flickering during agent edits.

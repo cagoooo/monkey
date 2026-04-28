@@ -1,7 +1,7 @@
 {
   "name": "monkey-pixel-clash",
   "private": true,
-  "version": "3.7.0",
+  "version": "3.8.0",
   "type": "module",
   "scripts": {
     "dev": "vite --port=3000 --host=0.0.0.0",
@@ -35,6 +35,9 @@
     "tsx": "^4.21.0",
     "typescript": "~5.8.2",
     "vite": "^6.2.0",
-    "vite-plugin-pwa": "^0.21.1"
+    "vite-plugin-pwa": "^1.2.0"
+  },
+  "overrides": {
+    "serialize-javascript": "^7.0.5"
   }
 }
