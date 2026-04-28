@@ -2,12 +2,60 @@ import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
 import {defineConfig, loadEnv} from 'vite';
+import {VitePWA} from 'vite-plugin-pwa';
 
 export default defineConfig(({mode}) => {
   const env = loadEnv(mode, '.', '');
   return {
     base: './',
-    plugins: [react(), tailwindcss()],
+    plugins: [
+      react(),
+      tailwindcss(),
+      VitePWA({
+        registerType: 'autoUpdate',
+        includeAssets: ['favicon.ico', 'favicon.png', 'og-image.png'],
+        manifest: {
+          name: '猴子投擲大戰',
+          short_name: '猴子投擲',
+          description: '經典香蕉投擲對戰！像素風格雙人天際線大戰。',
+          theme_color: '#0a0a0a',
+          background_color: '#0a0a0a',
+          display: 'standalone',
+          orientation: 'any',
+          start_url: './',
+          scope: './',
+          icons: [
+            {
+              src: 'favicon.png',
+              sizes: '512x512',
+              type: 'image/png',
+              purpose: 'any maskable',
+            },
+          ],
+        },
+        workbox: {
+          // 用 NetworkFirst 處理 HTML，避免使用者一直拿到舊版 index.html
+          globPatterns: ['**/*.{js,css,html,svg,png,ico,webp}'],
+          navigateFallback: 'index.html',
+          runtimeCaching: [
+            {
+              urlPattern: ({request}) => request.destination === 'document',
+              handler: 'NetworkFirst',
+              options: {
+                cacheName: 'html-cache',
+                networkTimeoutSeconds: 3,
+                expiration: {maxEntries: 10, maxAgeSeconds: 60 * 60 * 24},
+              },
+            },
+            {
+              // Firebase Firestore 動態請求一律 NetworkOnly，不要快取
+              urlPattern: /^https:\/\/firestore\.googleapis\.com\//,
+              handler: 'NetworkOnly',
+            },
+          ],
+        },
+      }),
+    ],
     define: {
       'import.meta.env.VITE_FIREBASE_API_KEY':            JSON.stringify(env.VITE_FIREBASE_API_KEY            || '__FIREBASE_API_KEY__'),
       'import.meta.env.VITE_FIREBASE_AUTH_DOMAIN':        JSON.stringify(env.VITE_FIREBASE_AUTH_DOMAIN        || '__FIREBASE_AUTH_DOMAIN__'),

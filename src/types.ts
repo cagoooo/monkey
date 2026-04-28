@@ -110,7 +110,11 @@ export interface GameState {
   };
 }
 
-export const GRAVITY = 0.25;
-export const CANVAS_WIDTH = 800;
-export const CANVAS_HEIGHT = 600;
-export const MONKEY_SIZE = 24;
+// 常數已搬遷至 src/game/constants.ts（單一事實來源）。
+// 為了不破壞既有 import path，這裡 re-export 一份。
+export {
+  GRAVITY,
+  CANVAS_WIDTH,
+  CANVAS_HEIGHT,
+  MONKEY_SIZE,
+} from './game/constants';

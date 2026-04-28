@@ -39,6 +39,66 @@ canvas {
   }
 }
 
+/* ──────────────────────────────────────────
+ * 直立模式（portrait）UX 補強
+ * 設計目標：在直立手機上仍能玩，但給予橫向提示。
+ * ────────────────────────────────────────── */
+@media (orientation: portrait) and (max-width: 900px) {
+  /* 加大觸控按鈕的點擊範圍，符合 WCAG 44×44 最小規範 */
+  .retro-button {
+    min-height: 44px;
+    min-width: 44px;
+    padding: 0.6rem 1rem;
+  }
+
+  .retro-input {
+    min-height: 44px;
+    font-size: 1rem;
+  }
+
+  /* 直立時把遊戲容器釘在螢幕上半部，下方留空間給 HUD/提示 */
+  .game-container:not(.pseudo-fullscreen):not(:fullscreen) {
+    margin-top: env(safe-area-inset-top, 0);
+  }
+}
+
+/* 旋轉提示徽章 — 由 React 條件渲染，不打擾 */
+.portrait-hint {
+  position: fixed;
+  top: env(safe-area-inset-top, 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 9998;
+  background: rgba(250, 204, 21, 0.95);
+  color: #1a1a1a;
+  padding: 6px 14px;
+  border: 2px solid #1a1a1a;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+  animation: portraitHintFade 0.4s ease-out;
+}
+
+.portrait-hint button {
+  background: transparent;
+  border: none;
+  color: #1a1a1a;
+  font-weight: bold;
+  cursor: pointer;
+  padding: 0 4px;
+  font-size: 14px;
+  line-height: 1;
+}
+
+@keyframes portraitHintFade {
+  from { opacity: 0; transform: translate(-50%, -8px); }
+  to   { opacity: 1; transform: translate(-50%, 0); }
+}
+
 /* Pseudo-fullscreen for mobile/unsupported browsers */
 .game-container.pseudo-fullscreen {
   position: fixed;

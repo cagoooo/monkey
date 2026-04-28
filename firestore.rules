@@ -1,52 +1,59 @@
 // ===============================================================
-// Assumed Data Model
+// Monkey 投擲大戰 — Firestore Security Rules
 // ===============================================================
 //
 // Collection: leaderboard
 // Document ID: auto-generated
-// Fields:
-//   - name: string (required, 1-50 chars) - Player's identity (e.g., Grade-Class-Number)
-//   - score: number (required, positive integer) - The high score
-//   - timestamp: timestamp (required) - When the score was achieved
+// Allowed fields (exactly these three; no extras):
+//   - name:      string, regex: ^\d{1,2}年\d{1,3}班\d{1,3}號$
+//   - score:     integer, 0 <= score <= 9999
+//   - timestamp: server timestamp (must equal request.time)
 //
+// 防刷分策略（Defense-in-depth）：
+//   1. Schema 嚴格鎖死：keys 必須剛好是三個
+//   2. score 上限 9999（單場合理最大值約 5000）
+//   3. score 必須是整數（int），不是任意 number
+//   4. name 必須符合「N年N班N號」格式，杜絕亂塞長字串攻擊
+//   5. timestamp 必須 == request.time（不能由 client 偽造時間）
+//   6. update / delete 完全禁止（防止改寫歷史）
+//   7. 其它 collection 預設 deny（白名單模式）
+//
+// 注意：以上是純 Rules 層防護，無法防止「合法格式但短時間連續灌假分」。
+// 進階防護（rate limit / replay 驗證）需改 Cloud Function 中介。
 // ===============================================================
 
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // ===============================================================
-    // Helper Functions
-    // ===============================================================
-    
-    function isAuthenticated() {
-      return request.auth != null;
+
+    function isValidName(name) {
+      return name is string
+          && name.size() >= 5
+          && name.size() <= 20
+          && name.matches('^[0-9]{1,2}年[0-9]{1,3}班[0-9]{1,3}號$');
+    }
+
+    function isValidScore(score) {
+      return score is int
+          && score >= 0
+          && score <= 9999;
     }
 
     function isValidLeaderboardEntry(data) {
-      return data.keys().hasAll(['name', 'score', 'timestamp']) &&
-             data.name is string && data.name.size() >= 1 && data.name.size() <= 50 &&
-             data.score is number && data.score >= 0 &&
-             data.timestamp is timestamp;
+      return data.keys().hasOnly(['name', 'score', 'timestamp'])
+          && data.keys().hasAll(['name', 'score', 'timestamp'])
+          && isValidName(data.name)
+          && isValidScore(data.score)
+          && data.timestamp == request.time;
     }
-
-    // ===============================================================
-    // Rules
-    // ===============================================================
 
     match /leaderboard/{entryId} {
-      // Anyone can read the leaderboard (publicly visible)
       allow read: if true;
-      
-      // Anyone can create an entry (even unauthenticated for this arcade-style game)
-      // but we validate the data strictly
       allow create: if isValidLeaderboardEntry(request.resource.data);
-      
-      // No updates or deletes allowed for leaderboard entries to prevent tampering
       allow update, delete: if false;
     }
-    
-    // Default deny
+
+    // Default deny — whitelist mode
     match /{document=**} {
       allow read, write: if false;
     }

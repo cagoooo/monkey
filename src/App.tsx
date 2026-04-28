@@ -4,13 +4,21 @@
  */
 
 import React, { useEffect, useRef, useState } from 'react';
-import { Building, GameState, Point, CANVAS_WIDTH, CANVAS_HEIGHT, MONKEY_SIZE, GRAVITY, Treasure, ProjectileType, Destruction, ParticleType, Particle, Meteor } from './types';
+import { Building, GameState, Point, Treasure, ProjectileType, Destruction, ParticleType, Particle, Meteor } from './types';
+import {
+  CANVAS_WIDTH,
+  CANVAS_HEIGHT,
+  MONKEY_SIZE,
+  GRAVITY,
+  PLAYER_COLORS,
+} from './game/constants';
 import { motion, AnimatePresence } from 'motion/react';
 import { Trophy, Wind, RotateCcw, Play, Maximize, Minimize, Volume2, VolumeX, Medal, User, Send } from 'lucide-react';
 import { soundService } from './services/soundService';
 import { getTopScores, saveHighScore, LeaderboardEntry } from './firebase';
+import { PortraitHint } from './game/components/PortraitHint';
 
-const COLORS = ['#AAAAAA', '#00AAAA', '#AA0000'];
+const COLORS = PLAYER_COLORS;
 
 const getGroundY = (x: number, buildings: Building[], destructions: Destruction[]) => {
   const building = buildings.find(b => x >= b.x && x <= b.x + b.width);
@@ -2364,8 +2372,9 @@ export default function App() {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-0 md:p-4 bg-[#0000AA]">
-      <div 
-        ref={gameContainerRef} 
+      <PortraitHint />
+      <div
+        ref={gameContainerRef}
         className={`game-container relative bg-black md:border-4 border-[#AAAAAA] shadow-2xl overflow-hidden ${isFullscreen || isPseudoFullscreen ? 'pseudo-fullscreen' : ''}`}
       >
         <div className="game-content relative w-full h-full flex flex-col items-center justify-center">
