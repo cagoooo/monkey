@@ -1,5 +1,6 @@
 import { initializeApp } from 'firebase/app';
 import { getFirestore, collection, addDoc, query, orderBy, limit, onSnapshot, serverTimestamp } from 'firebase/firestore';
+import { getFunctions, httpsCallable, FunctionsError } from 'firebase/functions';
 
 // Firebase 設定從環境變數讀取（Vite 透過 define 注入，或 GitHub Actions 透過 inject.py 替換）
 const firebaseConfig = {
@@ -13,9 +14,10 @@ const firebaseConfig = {
 
 const firestoreDatabaseId = import.meta.env.VITE_FIREBASE_DATABASE_ID || '__FIREBASE_DATABASE_ID__';
 
-// Initialize Firebase SDK（只啟用 Firestore，不啟用 Auth — 排行榜不需要登入）
+// Initialize Firebase SDK（只啟用 Firestore + Functions，不啟用 Auth — 排行榜不需要登入）
 const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app, firestoreDatabaseId);
+export const functions = getFunctions(app, 'asia-east1');
 
 // 注意：未實際使用 Firebase Auth，因此不呼叫 getAuth(app)。
 // 否則 SDK 會自動初始化 Auth iframe 並打 identitytoolkit.googleapis.com，
@@ -30,15 +32,40 @@ export interface LeaderboardEntry {
   timestamp: any;
 }
 
+/**
+ * 環境變數開關：要不要走 Cloud Function 路徑（B6 防刷分強化）。
+ * 預設 false（直寫 Firestore，與 Spark 免費方案相容）。
+ * 部署 Function 後改 .env 設 VITE_USE_CALLABLE_SUBMIT=true 就會切過去。
+ */
+const USE_CALLABLE_SUBMIT = import.meta.env.VITE_USE_CALLABLE_SUBMIT === 'true';
+
+const submitScoreCallable = httpsCallable<
+  {name: string; score: number},
+  {ok: boolean; name: string; score: number}
+>(functions, 'monkey_submitScore');
+
 export const saveHighScore = async (name: string, score: number) => {
+  if (USE_CALLABLE_SUBMIT) {
+    // ── 透過 Cloud Function 提交（B6 路徑：含 server-side rate limit + log）──
+    try {
+      await submitScoreCallable({name, score});
+    } catch (error) {
+      const fnErr = error as FunctionsError;
+      console.error('Callable submitScore failed:', fnErr.code, fnErr.message);
+      throw error;
+    }
+    return;
+  }
+
+  // ── 直寫 Firestore（預設路徑，靠 Rules 層擋假分）──
   try {
     await addDoc(collection(db, 'leaderboard'), {
       name,
       score,
-      timestamp: serverTimestamp()
+      timestamp: serverTimestamp(),
     });
   } catch (error) {
-    console.error("Error saving high score:", error);
+    console.error('Error saving high score:', error);
     throw error;
   }
 };

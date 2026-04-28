@@ -10,16 +10,23 @@
 //   - timestamp: server timestamp (must equal request.time)
 //
 // 防刷分策略（Defense-in-depth）：
-//   1. Schema 嚴格鎖死：keys 必須剛好是三個
-//   2. score 上限 9999（單場合理最大值約 5000）
-//   3. score 必須是整數（int），不是任意 number
-//   4. name 必須符合「N年N班N號」格式，杜絕亂塞長字串攻擊
-//   5. timestamp 必須 == request.time（不能由 client 偽造時間）
-//   6. update / delete 完全禁止（防止改寫歷史）
-//   7. 其它 collection 預設 deny（白名單模式）
+//   Layer 1 - Rules 層（本檔，Spark 免費方案就能用）：
+//     1. Schema 嚴格鎖死：keys 必須剛好是三個
+//     2. score 上限 9999（單場合理最大值約 5000）
+//     3. score 必須是整數（int），不是任意 number
+//     4. name 必須符合「N年N班N號」格式，杜絕亂塞長字串攻擊
+//     5. timestamp 必須 == request.time（不能由 client 偽造時間）
+//     6. update / delete 完全禁止（防止改寫歷史）
+//     7. 其它 collection 預設 deny（白名單模式）
 //
-// 注意：以上是純 Rules 層防護，無法防止「合法格式但短時間連續灌假分」。
-// 進階防護（rate limit / replay 驗證）需改 Cloud Function 中介。
+//   Layer 2 - Cloud Function `monkey_submitScore` (B6, 需 Blaze 計費方案):
+//     - Rate limit（同 name 60 秒內只能提交 1 次）
+//     - 可疑值 logging（>5000 分自動記 log）
+//     - 部署後可改 client write 為 false，徹底擋掉前端直寫
+//
+// 切換到 Layer 2 only 模式（部署 Cloud Function 後）：
+//   把下面的 `allow create: ...` 改成 `allow create: if false;`
+//   前端改用 httpsCallable('monkey_submitScore') 而不是 addDoc
 // ===============================================================
 
 rules_version = '2';

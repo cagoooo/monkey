@@ -1,5 +1,63 @@
 # 📜 更新日誌 (CHANGELOG)
 
+## [3.12.0] - 2026-04-29
+
+### 🛡️ B6 Cloud Function 防刷分（程式碼就緒，待 Blaze 升級）
+
+新建 `functions/` 目錄，含完整 TypeScript Cloud Function 實作：
+
+#### `functions/src/submitScore.ts`（onCall v2）
+- **Schema 驗證**：name regex `^\d{1,2}年\d{1,3}班\d{1,3}號$`，score 整數 0–9999
+- **Rate limit**：同 name 60 秒內只能提交 1 次
+- **可疑值偵測**：score > 5000 自動 logger.info 記 IP（事後追查用）
+- Server-side `FieldValue.serverTimestamp()` 強制注入
+- region: `asia-east1`（台灣最快），maxInstances: 10（防爆炸燒錢）
+
+#### `functions/src/index.ts`
+- `setGlobalOptions` 全域成本護欄
+- export 命名為 `monkey_submitScore`（依 firebase-multi-app-safety 慣例加 codebase 前綴）
+
+#### 部署架構
+- `firebase.json` 加入 `functions[]` 含 `codebase: "monkey"`，部署指令 `firebase deploy --only functions:monkey`
+- `firestore.rules` 註解寫明 Layer 1 (Rules) vs Layer 2 (Function) 切換方式
+
+#### 前端整合（feature flag）
+- `firebase.ts` 加 `httpsCallable` 路徑
+- 環境變數 `VITE_USE_CALLABLE_SUBMIT=true` 才走 Function 路徑（預設 false 走直寫）
+- 漸進式遷移，零風險
+
+#### 完整部署 SOP（[functions/DEPLOY.md](functions/DEPLOY.md)）
+- Blaze 升級流程
+- Budget Alert 設定（< $1 USD 告警，永久 $0/月）
+- 7 步驟首次部署 + 緊急回滾指令
+- 後續維護（改 rate limit / 加欄位 / 看 logs）
+
+> 💡 Cloud Functions 免費層每月 200 萬次叫用，本專案估計 < 12,000 次/月，**永遠不會收費**
+
+### 📊 B3 量測先行（推翻原 Web Worker 提案）
+
+新增 [docs/B3-WEB-WORKER-ANALYSIS.md](docs/B3-WEB-WORKER-ANALYSIS.md)，**誠實評估後決定不做原本的 B3**：
+
+- 量化 game loop 工作量：典型 ~0.5ms / 峰值 ~3ms（**不是 CPU bound**）
+- 真正瓶頸：Canvas 繪圖 8-15ms + React reconciliation 3-8ms
+- Worker 訊息往返成本 2-4ms，搬過去**反而更慢**
+- 提供 4 種替代方案排序（量測先行 / RAF 節流 / particles useRef / OffscreenCanvas）
+
+#### `useGameLoop` 加 dev-mode frame timing
+- 每 tick 量 `performance.now()`，超過 16ms 在 console.warn
+- production build 透過 `import.meta.env.DEV` 完全 tree-shake，零成本
+- 用於後續使用者實機測試（iPhone 11 等）找出真正瓶頸
+
+### 🚦 v3.12.0 數字結算
+
+| 指標 | v3.11.0 | **v3.12.0** | 變化 |
+|---|---|---|---|
+| Cloud Function 程式碼 | 0 | **submitScore (Callable v2)** ✅ | +1 |
+| 部署 SOP 文件 | 0 | **functions/DEPLOY.md** ✅ | +1 |
+| 前端 Function 整合 | — | feature flag 就緒 | ✅ |
+| Frame timing dev tool | 無 | console.warn @ 16ms | ✅ |
+| 單元測試 | 72 | 72 | — |
+
 ## [3.11.0] - 2026-04-29
 
 ### 🧪 B2 物理引擎單元測試（vitest）

@@ -1,7 +1,7 @@
 # 📈 專案開發進度表 (DEVELOPMENT_PROGRESS.md)
 
 > 最後更新：2026-04-29
-> 目前版本：**v3.11.0** ✅ 已部署上線（B1 + B2 + B5 完成 🧪🎁）
+> 目前版本：**v3.12.0** ✅ 已部署上線（B1+B2+B5+B6 ✅，B3 量測先行 📊）
 
 ---
 
@@ -87,6 +87,19 @@
 - [x] 清掉 11 個 unused imports（lint warnings 21 → 11）
 - [x] Build 3.36s pass，typecheck pass
 
+### 🟪 Phase 12：v3.12.0 B6 Cloud Function 就緒 + B3 量測先行（2026-04-29）✨
+- [x] **B6 functions/ 目錄完整建立**
+  - `submitScore.ts` Callable v2（schema + rate limit + 可疑值 logging）
+  - `setGlobalOptions` 成本護欄（asia-east1 + maxInstances 10）
+  - `firebase.json` codebase: monkey 命名
+- [x] **firebase.ts feature flag**：`VITE_USE_CALLABLE_SUBMIT=true` 才走 Function 路徑（預設 false 直寫）
+- [x] **完整部署 SOP**：[functions/DEPLOY.md](functions/DEPLOY.md)（Blaze 升級 / Budget Alert / 緊急回滾）
+- [x] **B3 誠實評估**：[docs/B3-WEB-WORKER-ANALYSIS.md](docs/B3-WEB-WORKER-ANALYSIS.md)
+  - 量化分析：game loop 不是 CPU bound（典型 0.5ms / 峰值 3ms）
+  - Worker 訊息往返 2-4ms 反而更慢，**推翻原 B3 提案**
+  - 改採量測先行：useGameLoop 加 dev-mode frame timing（>16ms 警告）
+  - 真正瓶頸是 Canvas 繪圖 + React reconciliation，列 4 種替代方案
+
 ### 🟧 Phase 11：v3.11.0 B2 單元測試 + B5 道具註冊表（2026-04-29）✨
 - [x] **B2 vitest 4.1.5 + 6 個測試檔（72 tests / 347ms）**
   - collision.test.ts（13）/ physics.test.ts（17）/ scoring.test.ts（6）
@@ -114,7 +127,7 @@
 
 | 項目 | 狀態 |
 |---|---|
-| **版本** | `v3.11.0` ✅ |
+| **版本** | `v3.12.0` ✅ |
 | **正式站** | https://cagoooo.github.io/monkey/ |
 | **Firebase 專案** | `monkey-pixel-clash`（自有） |
 | **CI/CD** | GitHub Actions（Node 22 LTS） |
@@ -432,8 +445,10 @@ const POWERUPS: Record<string, PowerUp> = { giant: {...}, acid: {...} };
 | ~~6b~~ | ~~B1.5 useGameLoop + useInput~~ | ✅ 完成（v3.10.0）：App.tsx 削減 828 行 🏆 |
 | ~~8~~ | ~~B2 物理引擎單元測試~~ | ✅ 完成（v3.11.0）：72 tests / 347ms |
 | ~~9~~ | ~~B5 道具系統註冊表化~~ | ✅ 完成（v3.11.0）：POWERUPS registry + useGameLoop 接入 |
-| **10** | **B3 Web Worker 物理** | 2 天 | iPhone 11 不掉幀 |
-| **11** | **B6 Cloud Function 防刷分** | 1 天 + Blaze 升級 | A5 的徹底進化版 |
+| ~~10~~ | ~~B3 Web Worker 物理~~ | ✅ 重新評估後**不做**（v3.12.0）— 改為 frame timing + 量測先行；分析見 docs/B3-WEB-WORKER-ANALYSIS.md |
+| ~~11~~ | ~~B6 Cloud Function 防刷分~~ | ✅ 程式碼就緒（v3.12.0）— 待使用者升 Blaze 後執行 functions/DEPLOY.md |
+| **10b** | **B3-alt 量測後再決定**：先請 user 用 iPhone 玩大爆炸場景，看 console 有無 Slow tick | 0.5h 量測 | 數據導向決策 |
+| **11b** | **B6 部署**：升 Blaze + 設 Budget Alert + `firebase deploy --only functions:monkey` + 切 feature flag | 30 min | 啟用 server-side rate limit |
 | **12** | **C3 AI 電腦對手 (Gemini)** | 1 週 | 單人模式上線 |
 | **13** | **C6 教學整合**（Blockly / 班級榜 / GIF）| 持續性 | 你的最強差異化 |
 

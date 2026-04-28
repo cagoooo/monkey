@@ -29,6 +29,8 @@ import {handleTurnTransition} from '../engine/turnTransition';
 import {getPowerUp} from '../engine/powerups';
 
 const TICK_MS = 20;
+/** dev mode 下，tick 超過此 ms 數會 warn — 用於追蹤 iPhone 等舊裝置的掉幀 */
+const SLOW_TICK_THRESHOLD_MS = 16;
 
 interface UseGameLoopArgs {
   status: GameState['status'] | undefined;
@@ -43,6 +45,9 @@ export function useGameLoop({status, setGameState, initGame}: UseGameLoopArgs) {
     if (!status) return;
 
     const interval = setInterval(() => {
+      // dev-only frame timing：超過 16ms 就 warn（B3 量測先行策略）
+      const tickStart = import.meta.env.DEV ? performance.now() : 0;
+
       setGameState(prev => {
         if (!prev) return null;
 
@@ -580,6 +585,13 @@ export function useGameLoop({status, setGameState, initGame}: UseGameLoopArgs) {
 
         return next;
       });
+
+      if (import.meta.env.DEV) {
+        const elapsed = performance.now() - tickStart;
+        if (elapsed > SLOW_TICK_THRESHOLD_MS) {
+          console.warn(`[useGameLoop] Slow tick: ${elapsed.toFixed(2)}ms`);
+        }
+      }
     }, TICK_MS);
 
     return () => clearInterval(interval);
