@@ -1,5 +1,67 @@
 # 📜 更新日誌 (CHANGELOG)
 
+## [3.10.0] - 2026-04-29
+
+### 🏆 B1.5 完成 — App.tsx 拆分終局（B 階段最大里程碑）
+
+新建 4 個檔到 `src/game/`：
+
+#### `engine/scoring.ts`（30 行）
+- `calculateScore(hitPos, shooterPos, targetPos)` — 純函式：距離越近分數越高（最高 100 分）
+
+#### `engine/turnTransition.ts`（115 行）
+- `handleTurnTransition(prev, next)` — 回合切換邏輯
+- 連續 5 回合在地面 → 自動爆炸懲罰
+- 隨機產生新寶箱（meteor / giant / acid / beam）
+- 切到下個玩家瞄準階段
+
+#### `hooks/useInput.ts`（210 行）
+- 6 個 canvas handler：mouseDown/Move/Up + touchStart/Move/End
+- 內部 helpers：toCanvasCoords, startAim, moveAim, releaseAim
+- 玩家 1 / 玩家 2 半邊限制 + cursor pointer 切換 + 拖曳力道計算
+
+#### `hooks/useGameLoop.ts`（535 行）
+- 50 FPS setInterval 主迴圈
+- 粒子物理（smoke/spark/debris/normal 各自重力與阻力）
+- 螢幕震動衰減 + 玩家落下 + 太陽掉落爆炸
+- 建築窗戶閃爍（每 2 秒）
+- 流星雨狀態（meteor 寶箱）
+- 香蕉飛行 + 5 種碰撞檢測（寶箱/出界/太陽/猴子/建築）
+- 爆炸動畫推進 + 結束處理
+- 內建 lastWindowToggleRef
+
+### 📉 App.tsx 終極瘦身
+
+| 變化 | 行數 |
+|---|---|
+| 移除 calculateScore 函式 | -10 |
+| 移除 handleTurnTransition 函式 | -110 |
+| 移除 6 個 input handler | -190 |
+| 移除 535 行 setInterval game loop useEffect | -535 |
+| 移除 lastWindowToggle useRef | -1 |
+| 清掉 7 個 unused imports（ParticleType / Particle / Meteor / MONKEY_SIZE / getGroundY 等）| -7 |
+| 加 4 個 import + 2 個 hook 呼叫 + engine 引用 | +25 |
+| **App.tsx 2418 → 1590 行** | **淨削減 828 行（34%）** |
+
+### 🎯 累計 B1 全部完成 ✅
+- B1.1 ✅ types + useLeaderboard（v3.8.0）
+- B1.2 ✅ engine/ 三模組 terrain + collision + physics（v3.8.1）
+- B1.3 ✅ hooks/ 三模組 viewport + fullscreen + scoreSubmission（v3.8.2）
+- B1.4 ✅ components/ 五模組 StartScreen + WinnerScreen + Leaderboard + ScoreEntryModal + decorations（v3.9.0）
+- **B1.5 ✅ engine + hooks 終局（scoring + turnTransition + useInput + useGameLoop）**
+
+### 🚦 v3.10.0 數字結算
+
+| 指標 | 起始 v3.6.x | **v3.10.0** | 變化 |
+|---|---|---|---|
+| **App.tsx 行數** | 2802 | **1590** | **-1212 行（-43%）** ✅ |
+| ESLint warnings | 未檢視 | **6** | ✅ |
+| 抽出 components | 0 | **6** | +6 |
+| 抽出 hooks | 0 | **6** | +6 |
+| 抽出 engine 模組 | 0 | **5** | +5 |
+| 主程式 bundle | 851 KB | 250 KB | -71% |
+| npm 漏洞 | 7（1 critical）| 0 | -100% |
+
 ## [3.9.0] - 2026-04-28（深夜+2）
 
 ### 🧩 App.tsx 拆分 第四波 — Components 模組化（B1.4）

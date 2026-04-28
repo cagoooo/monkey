@@ -1,7 +1,7 @@
 # 📈 專案開發進度表 (DEVELOPMENT_PROGRESS.md)
 
-> 最後更新：2026-04-28（深夜+2）
-> 目前版本：**v3.9.0** ✅ 已部署上線
+> 最後更新：2026-04-29
+> 目前版本：**v3.10.0** ✅ 已部署上線（B1 全部完成 🏆）
 
 ---
 
@@ -87,13 +87,24 @@
 - [x] 清掉 11 個 unused imports（lint warnings 21 → 11）
 - [x] Build 3.36s pass，typecheck pass
 
+### 🏆 Phase 10：v3.10.0 B1.5 App.tsx 拆分終局（2026-04-29）✨
+- [x] **`src/game/engine/scoring.ts`**：`calculateScore(hitPos, shooterPos, targetPos)` 純函式
+- [x] **`src/game/engine/turnTransition.ts`**：`handleTurnTransition(prev, next)` 回合切換邏輯
+- [x] **`src/game/hooks/useInput.ts`**：6 個 canvas handler（mouse + touch）封裝
+- [x] **`src/game/hooks/useGameLoop.ts`**：535 行 setInterval 主迴圈完整移植
+- [x] App.tsx 移除：calculateScore（10 行）+ handleTurnTransition（110 行）+ 6 個 handler（190 行）+ game loop useEffect（535 行）+ lastWindowToggle ref + 7 個 unused imports
+- [x] **App.tsx 2418 → 1590 行（淨削減 828 行 = 34%）**
+- [x] **B 階段拆分 100% 完成 — 從 2802 → 1590 = -43%**
+- [x] ESLint warnings 11 → 6（清掉 5 個 unused 後）
+- [x] Build 2.86s pass，typecheck pass
+
 ---
 
 ## 🛠️ 目前狀態 (Current Status)
 
 | 項目 | 狀態 |
 |---|---|
-| **版本** | `v3.9.0` ✅ |
+| **版本** | `v3.10.0` ✅ |
 | **正式站** | https://cagoooo.github.io/monkey/ |
 | **Firebase 專案** | `monkey-pixel-clash`（自有） |
 | **CI/CD** | GitHub Actions（Node 22 LTS） |
@@ -102,12 +113,12 @@
 | **Type Check** | ✅ pass |
 | **Bundle Size** | ✅ **主程式 247 KB / gzip 76 KB**（已拆 firebase/motion/react/icons 4 個 vendor chunks）|
 | **npm audit** | ✅ **0 漏洞** |
-| **App.tsx 行數** | **2418 行**（B1.4 又削減 366 行，**累計從 2852 → 2418 = 14%**）|
-| **`src/game/`** | constants ✅ types ✅ engine/ (3 模組) ✅ hooks/ (4 hooks) ✅ **components/ (6 元件) ✅**，worker/ 仍空 |
-| **抽出純函式** | 11 個（engine 模組）|
-| **抽出 hooks** | 4 個（useLeaderboard / useViewportHeight / useFullscreen / useScoreSubmission）|
+| **App.tsx 行數** | **1590 行**（B1.5 又削減 828 行，**累計從 2802 → 1590 = -43%**）🏆 |
+| **`src/game/`** | constants ✅ types ✅ **engine/ (5 模組) ✅** **hooks/ (6 hooks) ✅** **components/ (6 元件) ✅**，worker/ 仍空 |
+| **抽出 engine 模組** | 5 個（terrain / collision / physics / scoring / turnTransition）|
+| **抽出 hooks** | 6 個（useLeaderboard / useViewportHeight / useFullscreen / useScoreSubmission / useInput / useGameLoop）|
 | **抽出 components** | 6 個（PortraitHint + decorations + Leaderboard + ScoreEntryModal + WinnerScreen + StartScreen）|
-| **ESLint warnings** | 11 個（從 17 清掉 6 個 unused）|
+| **ESLint warnings** | 6 個（從 17 一路清到 6）|
 | **GitHub Actions runtime** | ⚠️ `actions/checkout@v4` 內部仍 Node 20（要等官方釋出 v5，這是 GitHub 端的事，無法在我們專案修）|
 
 ---
@@ -406,8 +417,8 @@ const POWERUPS: Record<string, PowerUp> = { giant: {...}, acid: {...} };
 | ~~4~~ | ~~B4 風力視覺化~~ | ✅ 完成（3 層）| UX 大升級 |
 | ~~5~~ | ~~B1.2 拆出 engine/~~ | ✅ 完成（v3.8.1）：terrain + collision + physics 三模組（純函式 + helper 提供） |
 | ~~6~~ | ~~B1.3 拆出 hooks/~~（第一波）| ✅ 完成（v3.8.2）：useViewportHeight / useFullscreen / useScoreSubmission |
-| ~~7~~ | ~~B1.4 拆出 components/~~ | ✅ 完成（v3.9.0）：5 個 component（StartScreen / WinnerScreen / Leaderboard / ScoreEntryModal / decorations）|
-| **6b** | **B1.5 最後一波**：useGameLoop（RAF 主迴圈）+ useInput（drag/touch handlers） | 3～5 天 | App.tsx 預估再縮 ~1500 行至 < 1000 行；整合 collision/physics helper |
+| ~~7~~ | ~~B1.4 拆出 components/~~ | ✅ 完成（v3.9.0） |
+| ~~6b~~ | ~~B1.5 useGameLoop + useInput~~ | ✅ 完成（v3.10.0）：App.tsx 削減 828 行 🏆 |
 | **8** | **B2 物理引擎單元測試** | 1 天 | B1 完成後立刻補 |
 | **9** | **B5 道具系統註冊表化** | 1 天 | 為 C 階段道具擴充鋪路 |
 | **10** | **B3 Web Worker 物理** | 2 天 | iPhone 11 不掉幀 |
@@ -417,19 +428,19 @@ const POWERUPS: Record<string, PowerUp> = { giant: {...}, acid: {...} };
 
 ---
 
-## 💎 v3.9.0 累計結算（v3.7.0 → 3.8.x → **3.9.0** 五連發）
+## 💎 v3.10.0 累計結算（v3.7.0 → 3.8.x → 3.9.0 → **3.10.0** 六連發 🏆）
 
-| 類別 | v3.6.x | v3.7.0 | v3.8.0 | v3.8.1 | v3.8.2 | **v3.9.0** |
-|---|---|---|---|---|---|---|
-| 依賴套件 | 686 | 562 | 562+over | 562+over | 562+over | 562+over |
-| npm 漏洞 | 未檢視 | 7 個 | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ |
-| 主程式 bundle | 851 KB | 851 KB | 247 KB | 247 KB | 248 KB | 250 KB |
-| Bundle gzip | — | 231 KB | 76 KB | 76 KB | 77 KB | 77 KB |
-| **App.tsx 行數** | 2802 | 2802 | 2852 | 2852 | 2784 | **2418** ✅ |
-| 純函式抽出 | 0 | 0 | 0 | 11 個 | 11 個 | 11 個 |
-| 自訂 hooks | 0 | 0 | 1 | 1 | 4 | 4 |
-| **抽出 components** | 0 | 0 | **1** | 1 | 1 | **6 個** ✅ |
-| Lint warnings | — | — | 16 | 17 | 17 | **11** ✅ |
+| 類別 | v3.6.x | v3.7.0 | v3.8.0 | v3.8.1 | v3.8.2 | v3.9.0 | **v3.10.0** |
+|---|---|---|---|---|---|---|---|
+| 依賴套件 | 686 | 562 | 562+over | 562+over | 562+over | 562+over | 562+over |
+| npm 漏洞 | 未檢視 | 7 個 | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ | 0 ✅ |
+| 主程式 bundle | 851 KB | 851 KB | 247 KB | 247 KB | 248 KB | 250 KB | 250 KB |
+| Bundle gzip | — | 231 KB | 76 KB | 76 KB | 77 KB | 77 KB | 78 KB |
+| **App.tsx 行數** | 2802 | 2802 | 2852 | 2852 | 2784 | 2418 | **1590** 🏆 |
+| 抽出 engine 模組 | 0 | 0 | 0 | 3 | 3 | 3 | **5 個** ✅ |
+| 抽出 hooks | 0 | 0 | 1 | 1 | 4 | 4 | **6 個** ✅ |
+| 抽出 components | 0 | 0 | 1 | 1 | 1 | 6 | 6 |
+| Lint warnings | — | — | 16 | 17 | 17 | 11 | **6** ✅ |
 
 ## 💎 v3.8.2 累計結算（v3.7.0 → 3.8.0 → 3.8.1 → 3.8.2 連發）
 
