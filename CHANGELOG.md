@@ -1,5 +1,60 @@
 # 📜 更新日誌 (CHANGELOG)
 
+## [3.9.0] - 2026-04-28（深夜+2）
+
+### 🧩 App.tsx 拆分 第四波 — Components 模組化（B1.4）
+
+新增 5 個 component 檔到 `src/game/components/`：
+
+#### `decorations.tsx`（130 行）
+- `BeatingGorilla` — 像素風猩猩捶胸動畫（用在 WinnerScreen）
+- `BananaOrbit` — 4 根香蕉繞橢圓軌道飛（用在 StartScreen）
+- `OrbitingBanana`（內部 helper）
+
+#### `Leaderboard.tsx`（54 行）
+- 排行榜顯示元件，內建 5 條 placeholder fallback
+- props: `entries: LeaderboardEntry[]`
+
+#### `ScoreEntryModal.tsx`（127 行）
+- 高分提交 Modal（年級 / 班級 / 座號三欄輸入）
+- 從 `useScoreSubmission` 接 props（state + callback）
+- 包 motion + AnimatePresence 動畫
+
+#### `WinnerScreen.tsx`（186 行）
+- 比賽結束畫面，組合 BeatingGorilla + Trophy + 回合得分表 + Leaderboard + ScoreEntryModal
+- 接受 14 個 props（gameState + 完整 score submission state cluster）
+
+#### `StartScreen.tsx`（129 行）
+- 開始畫面：玩家命名、重力設定、音效切換、全螢幕、開始按鈕
+- 11 個 props（4 個 input value + 6 個 callback + isMuted/isFullscreen）
+
+### 📉 App.tsx 大幅瘦身
+- 移除 inline 4 個裝飾 component（97 行：BananaIcon + BeatingGorilla + OrbitingBanana + BananaOrbit）
+  - **`BananaIcon` 是 dead code 順手刪除**
+- 移除 inline StartScreen JSX（90 行）
+- 移除 inline WinnerScreen + ScoreEntryModal JSX（197 行）
+- 取代為 2 個 component 呼叫（含 props 傳遞）
+- 移除 `DEFAULT_LEADERBOARD`（搬進 Leaderboard 內部）
+- 清掉 11 個 unused imports：`Destruction` / `GRAVITY` / `RotateCcw` / `Volume2` / `VolumeX` / `Medal` / `User` / `Send` / `saveHighScore` / `LeaderboardEntry` / unused `React`
+
+### 🎯 數字結算
+
+| 指標 | v3.8.2 | **v3.9.0** | 變化 |
+|---|---|---|---|
+| **App.tsx 行數** | 2784 | **2418** | **-366 行（13%）** ✅ |
+| ESLint warnings | 17 | **11** | -6（清 unused）✅ |
+| 抽出 components | 1 | **6** | +5 |
+| 累計抽出 hooks | 4 | 4 | — |
+| 累計抽出純函式 | 11 | 11 | — |
+| Build 時間 | 2.59s | 3.36s | 含新 chunk 處理 |
+
+### 🎯 累計 B1 進度
+- B1.1 ✅ types + useLeaderboard
+- B1.2 ✅ engine/ 三模組（terrain + collision + physics）
+- B1.3 ✅ hooks/ 三模組（viewport + fullscreen + scoreSubmission）
+- B1.4 ✅ components/ 五模組（decorations + Leaderboard + ScoreEntryModal + WinnerScreen + StartScreen）
+- **B1.5 待做：useGameLoop + useInput**（最後一塊：RAF 主迴圈 + 觸控/滑鼠 handlers）
+
 ## [3.8.2] - 2026-04-28（深夜+1）
 
 ### 🪝 App.tsx 拆分 第三波 — Hooks 模組化（B1.3）

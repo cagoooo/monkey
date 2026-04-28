@@ -3,20 +3,20 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useEffect, useRef, useState } from 'react';
-import { Building, GameState, Point, Treasure, ProjectileType, Destruction, ParticleType, Particle, Meteor } from './types';
+import { useEffect, useRef, useState } from 'react';
+import { Building, GameState, Point, Treasure, ProjectileType, ParticleType, Particle, Meteor } from './types';
 import {
   CANVAS_WIDTH,
   CANVAS_HEIGHT,
   MONKEY_SIZE,
-  GRAVITY,
   PLAYER_COLORS,
 } from './game/constants';
 import { motion, AnimatePresence } from 'motion/react';
-import { Trophy, Wind, RotateCcw, Play, Maximize, Minimize, Volume2, VolumeX, Medal, User, Send } from 'lucide-react';
+import { Trophy, Wind, Play, Maximize, Minimize } from 'lucide-react';
 import { soundService } from './services/soundService';
-import { saveHighScore, LeaderboardEntry } from './firebase';
 import { PortraitHint } from './game/components/PortraitHint';
+import { StartScreen } from './game/components/StartScreen';
+import { WinnerScreen } from './game/components/WinnerScreen';
 import { useLeaderboard } from './game/hooks/useLeaderboard';
 import { useViewportHeight } from './game/hooks/useViewportHeight';
 import { useFullscreen } from './game/hooks/useFullscreen';
@@ -24,111 +24,6 @@ import { useScoreSubmission } from './game/hooks/useScoreSubmission';
 import { getGroundY, generateWindowGrid } from './game/engine/terrain';
 
 const COLORS = PLAYER_COLORS;
-
-const BananaIcon = ({ size = 16 }: { size?: number }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M18 4C18 4 16 3 14 3C12 3 10 4 8 6C6 8 4 11 4 14C4 17 6 20 9 21C12 22 15 21 17 19C19 17 21 14 21 11C21 9 20 7 18 4Z" fill="#FFFF55" />
-    <path d="M18 4C18 4 19 5 19 6C19 7 18 8 17 9" stroke="#8B4513" strokeWidth="2" strokeLinecap="round" />
-  </svg>
-);
-
-const BeatingGorilla = ({ color }: { color: string }) => {
-  const [beat, setBeat] = useState(false);
-  useEffect(() => {
-    const interval = setInterval(() => setBeat(b => !b), 150);
-    return () => clearInterval(interval);
-  }, []);
-
-  return (
-    <div className="relative w-16 h-16 scale-150">
-      {/* Head */}
-      <div style={{ backgroundColor: color }} className="absolute left-1/2 -translate-x-1/2 top-0 w-6 h-5" />
-      {/* Eyes */}
-      <div className="absolute left-1/2 -translate-x-1/2 top-2 w-4 h-1 bg-black" />
-      {/* Body */}
-      <div style={{ backgroundColor: color }} className="absolute left-1/2 -translate-x-1/2 top-5 w-10 h-4" />
-      <div style={{ backgroundColor: color }} className="absolute left-1/2 -translate-x-1/2 top-9 w-8 h-8" />
-      {/* Arms */}
-      {beat ? (
-        <>
-          <div style={{ backgroundColor: color }} className="absolute left-0 top-2 w-3 h-6" />
-          <div style={{ backgroundColor: color }} className="absolute right-0 top-2 w-3 h-6" />
-        </>
-      ) : (
-        <>
-          <div style={{ backgroundColor: color }} className="absolute left-1 top-6 w-4 h-3" />
-          <div style={{ backgroundColor: color }} className="absolute right-1 top-6 w-4 h-3" />
-        </>
-      )}
-      {/* Legs */}
-      <div style={{ backgroundColor: color }} className="absolute left-2 bottom-0 w-3 h-6" />
-      <div style={{ backgroundColor: color }} className="absolute right-2 bottom-0 w-3 h-6" />
-    </div>
-  );
-};
-
-const OrbitingBanana = ({ delay = 0, rx = 300, ry = 100, speed = 5 }: { delay?: number, rx?: number, ry?: number, speed?: number }) => {
-  return (
-    <motion.div
-      className="absolute pointer-events-none w-10 h-10"
-      animate={{
-        x: [
-          Math.cos(0) * rx,
-          Math.cos(Math.PI / 2) * rx,
-          Math.cos(Math.PI) * rx,
-          Math.cos(3 * Math.PI / 2) * rx,
-          Math.cos(2 * Math.PI) * rx,
-        ],
-        y: [
-          Math.sin(0) * ry,
-          Math.sin(Math.PI / 2) * ry,
-          Math.sin(Math.PI) * ry,
-          Math.sin(3 * Math.PI / 2) * ry,
-          Math.sin(2 * Math.PI) * ry,
-        ],
-      }}
-      transition={{
-        duration: speed,
-        repeat: Infinity,
-        ease: "linear",
-        delay: -delay
-      }}
-      style={{
-        left: '50%',
-        top: '50%',
-        marginLeft: -20,
-        marginTop: -20,
-      }}
-    >
-      <motion.div 
-        className="w-full h-full flex items-center justify-center"
-        animate={{ rotate: [0, 360] }}
-        transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-      >
-        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M19.5 3.5C18.5 2.5 16 2.5 14 4.5C12 6.5 11 9.5 11 12.5C11 15.5 12 18.5 14 20.5C16 22.5 18.5 22.5 19.5 21.5C20.5 20.5 20.5 18 18.5 16C16.5 14 13.5 13 10.5 13C7.5 13 4.5 14 2.5 16C0.5 18 0.5 20.5 1.5 21.5" stroke="#FACC15" strokeWidth="2.5" strokeLinecap="round"/>
-        </svg>
-      </motion.div>
-    </motion.div>
-  );
-};
-
-const BananaOrbit = () => {
-  // rx: horizontal radius, ry: vertical radius
-  // For 5 characters at 9xl, width is ~600-700px, height is ~150px
-  const rx = 340;
-  const ry = 100;
-  const speed = 6;
-  
-  return (
-    <div className="absolute inset-0 pointer-events-none">
-      <OrbitingBanana delay={0} rx={rx} ry={ry} speed={speed} />
-      <OrbitingBanana delay={speed * 0.25} rx={rx} ry={ry} speed={speed} />
-      <OrbitingBanana delay={speed * 0.5} rx={rx} ry={ry} speed={speed} />
-      <OrbitingBanana delay={speed * 0.75} rx={rx} ry={ry} speed={speed} />
-    </div>
-  );
-};
 
 export default function App() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -141,13 +36,6 @@ export default function App() {
   const [message, setMessage] = useState<string>('');
   const [isMuted, setIsMuted] = useState(soundService.isMuted());
   const leaderboard = useLeaderboard();
-
-  const DEFAULT_LEADERBOARD: LeaderboardEntry[] = Array(5).fill(null).map((_, i) => ({
-    id: `default-${i}`,
-    name: '301-27號',
-    score: 100,
-    timestamp: new Date()
-  }));
 
   // 全螢幕 + viewport-height 由 hook 管理
   useViewportHeight();
@@ -2436,94 +2324,19 @@ export default function App() {
 
           <AnimatePresence>
           {showStartScreen && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="absolute inset-0 bg-[#0000AA] z-50 flex flex-col items-center justify-start md:justify-center p-4 md:p-8 overflow-y-auto"
-            >
-              <div className="relative mb-4 md:mb-12 mt-4 md:mt-0">
-                <BananaOrbit />
-                <motion.h1 
-                  initial={{ y: -50, scale: 0.5 }}
-                  animate={{ y: 0, scale: 1 }}
-                  className="text-5xl md:text-9xl font-bold text-yellow-400 drop-shadow-[0_4px_0_rgba(0,0,0,1)] md:drop-shadow-[0_8px_0_rgba(0,0,0,1)] text-center relative z-10"
-                >
-                  猴子丟香蕉
-                </motion.h1>
-              </div>
-
-              <motion.button
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.9 }}
-                onClick={handleStartGame}
-                className="retro-button text-2xl md:text-4xl px-8 md:px-12 py-4 md:py-6 mb-4 md:mb-12"
-              >
-                開始遊戲
-              </motion.button>
-
-              <motion.button
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.9 }}
-                onClick={toggleMute}
-                className="retro-button flex items-center gap-3 px-6 md:px-8 py-3 md:py-4 mb-4 md:mb-12 text-sm md:text-base"
-              >
-                {isMuted ? <VolumeX size={20} /> : <Volume2 size={20} />}
-                {isMuted ? '音效: 關閉' : '音效: 開啟'}
-              </motion.button>
-
-              <div className="flex flex-col md:flex-row gap-4 md:gap-8 mb-4 md:mb-12 w-full max-w-2xl px-4">
-                <div className="flex-1 flex flex-col gap-1 md:gap-2">
-                  <label className="text-[10px] md:text-sm uppercase opacity-70 text-center">玩家一 名稱</label>
-                  <input
-                    type="text"
-                    value={p1NameInput}
-                    onChange={(e) => setP1NameInput(e.target.value)}
-                    placeholder="玩家一"
-                    className="retro-input w-full text-center text-lg md:text-xl"
-                  />
-                </div>
-                <div className="flex-1 flex flex-col gap-1 md:gap-2">
-                  <label className="text-[10px] md:text-sm uppercase opacity-70 text-center">玩家二 名稱</label>
-                  <input
-                    type="text"
-                    value={p2NameInput}
-                    onChange={(e) => setP2NameInput(e.target.value)}
-                    placeholder="玩家二"
-                    className="retro-input w-full text-center text-lg md:text-xl"
-                  />
-                </div>
-              </div>
-
-              <div className="mt-auto w-full flex flex-col items-center gap-2 md:gap-4 pb-8 md:pb-0">
-                <div className="flex flex-col items-center gap-1 md:gap-2">
-                  <label className="text-[10px] md:text-sm uppercase opacity-70">重力值設定</label>
-                  <div className="flex items-center gap-2 md:gap-3">
-                    <input
-                      type="number"
-                      step="0.1"
-                      value={gravityInput}
-                      onChange={(e) => setGravityInput(e.target.value)}
-                      placeholder="預設地球Ｇ=9.8"
-                      className="retro-input w-32 md:w-48 text-center text-lg md:text-xl"
-                    />
-                    <span className="text-lg md:text-xl opacity-50">m/s²</span>
-                  </div>
-                </div>
-
-                <button
-                  onClick={toggleFullscreen}
-                  className="retro-button text-xs md:text-sm px-4 md:px-6 py-2 mt-2 md:mt-4"
-                >
-                  {isFullscreen ? '退出全螢幕' : '全螢幕'}
-                </button>
-              </div>
-
-              <div className="absolute bottom-4 right-4 text-xs opacity-50 text-right">
-                <div>ＡＮＴＹＥＨ修正</div>
-                <div className="text-[10px] mt-1">v1.3.0</div>
-              </div>
-            </motion.div>
+            <StartScreen
+              p1NameInput={p1NameInput}
+              p2NameInput={p2NameInput}
+              gravityInput={gravityInput}
+              isMuted={isMuted}
+              isFullscreen={isFullscreen}
+              onP1NameChange={setP1NameInput}
+              onP2NameChange={setP2NameInput}
+              onGravityChange={setGravityInput}
+              onStartGame={handleStartGame}
+              onToggleMute={toggleMute}
+              onToggleFullscreen={toggleFullscreen}
+            />
           )}
 
           {/* 已移除旋轉裝置限制，直立與橫向皆可遊玩 */}
@@ -2572,202 +2385,23 @@ export default function App() {
           )}
 
           {gameState?.status === 'tournamentOver' && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="absolute inset-0 flex flex-col items-center justify-center bg-[#0000AA] z-[60] overflow-y-auto py-12"
-            >
-              <div className="relative flex flex-col lg:flex-row items-center lg:items-start gap-12 max-w-6xl w-full px-8">
-                {/* Left Side: Winner Info */}
-                <div className="flex flex-col items-center flex-1">
-                  {/* Gorilla on top of Trophy */}
-                  <div className="mb-[-10px] z-10">
-                     <BeatingGorilla color="#FFCC99" />
-                  </div>
-                  
-                  {/* Trophy */}
-                  <div className="relative">
-                    <Trophy size={160} className="text-yellow-400 drop-shadow-2xl" />
-                  </div>
-
-                  <motion.h2 
-                    initial={{ y: 20, opacity: 0 }}
-                    animate={{ y: 0, opacity: 1 }}
-                    transition={{ delay: 0.5 }}
-                    className="text-4xl md:text-6xl font-bold text-white mt-8 mb-4 drop-shadow-lg text-center"
-                  >
-                    恭喜贏家
-                  </motion.h2>
-                  
-                  <motion.p 
-                    initial={{ scale: 0.5, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    transition={{ delay: 0.8 }}
-                    className="text-2xl md:text-3xl text-yellow-400 font-bold mb-8 text-center"
-                  >
-                    {gameState.tournamentWinner === 1 ? gameState.playerNames[0] : gameState.playerNames[1]} 統治了城市！
-                  </motion.p>
-
-                  {/* Round History Table */}
-                  <motion.div
-                    initial={{ y: 20, opacity: 0 }}
-                    animate={{ y: 0, opacity: 1 }}
-                    transition={{ delay: 1 }}
-                    className="bg-black/40 border-2 border-white/30 p-4 mb-8 w-full max-w-md"
-                  >
-                    <h3 className="text-sm uppercase opacity-70 mb-4 text-center">每回合得分比較</h3>
-                    <div className="grid grid-cols-3 gap-4 text-center border-b border-white/20 pb-2 mb-2">
-                      <div className="text-[10px] uppercase opacity-50">回合</div>
-                      <div className="text-xs font-bold truncate">{gameState.playerNames[0]}</div>
-                      <div className="text-xs font-bold truncate">{gameState.playerNames[1]}</div>
-                    </div>
-                    <div className="max-h-40 overflow-y-auto custom-scrollbar">
-                      {gameState.roundHistory.p1.map((p1Score, idx) => (
-                        <div key={idx} className="grid grid-cols-3 gap-4 text-center py-1 border-b border-white/5 last:border-0">
-                          <div className="text-xs opacity-50">{idx + 1}</div>
-                          <div className={`text-sm ${p1Score > gameState.roundHistory.p2[idx] ? 'text-yellow-400 font-bold' : 'text-white'}`}>
-                            {p1Score}
-                          </div>
-                          <div className={`text-sm ${gameState.roundHistory.p2[idx] > p1Score ? 'text-yellow-400 font-bold' : 'text-white'}`}>
-                            {gameState.roundHistory.p2[idx]}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                    <div className="grid grid-cols-3 gap-4 text-center pt-2 mt-2 border-t border-white/20 font-bold">
-                      <div className="text-xs uppercase opacity-50">總計</div>
-                      <div className="text-yellow-400">{gameState.roundHistory.p1.reduce((a, b) => a + b, 0)}</div>
-                      <div className="text-yellow-400">{gameState.roundHistory.p2.reduce((a, b) => a + b, 0)}</div>
-                    </div>
-                  </motion.div>
-
-                  <button
-                    onClick={handleResetToStart}
-                    className="retro-button text-xl md:text-2xl px-8 md:px-12 py-4 md:py-6"
-                  >
-                    重新開始新賽局
-                  </button>
-                </div>
-
-                {/* Right Side: Hero Board (Leaderboard) */}
-                <motion.div 
-                  initial={{ x: 50, opacity: 0 }}
-                  animate={{ x: 0, opacity: 1 }}
-                  transition={{ delay: 1.2 }}
-                  className="flex-1 w-full max-w-md bg-black/50 border-4 border-yellow-400 p-6 shadow-[0_0_20px_rgba(250,204,21,0.3)]"
-                >
-                  <div className="flex items-center justify-center gap-3 mb-6">
-                    <Medal className="text-yellow-400" size={32} />
-                    <h3 className="text-3xl font-black text-white italic tracking-tighter">英雄榜</h3>
-                  </div>
-
-                  <div className="space-y-3">
-                    {(() => {
-                      const displayBoard = leaderboard.length > 0 ? leaderboard : DEFAULT_LEADERBOARD;
-                      return displayBoard.map((entry, idx) => (
-                        <div 
-                          key={entry.id} 
-                          className={`flex items-center justify-between p-3 border-2 ${idx === 0 ? 'bg-yellow-400/20 border-yellow-400' : 'bg-white/5 border-white/20'}`}
-                        >
-                          <div className="flex items-center gap-4">
-                            <span className={`text-xl font-black w-6 ${idx === 0 ? 'text-yellow-400' : 'text-white/50'}`}>{idx + 1}</span>
-                            <span className="text-lg font-bold text-white truncate max-w-[180px]">{entry.name}</span>
-                          </div>
-                          <span className="text-2xl font-black text-yellow-400 font-mono">{entry.score}</span>
-                        </div>
-                      ));
-                    })()}
-                  </div>
-
-                  <div className="mt-8 pt-6 border-t border-white/20 text-center">
-                    <p className="text-[10px] uppercase tracking-widest opacity-50">只有最強的猩猩才能名留青史</p>
-                  </div>
-                </motion.div>
-              </div>
-
-              {/* High Score Entry Modal */}
-              <AnimatePresence>
-                {showScoreEntry && (
-                  <motion.div 
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-md p-4"
-                  >
-                    <motion.div 
-                      initial={{ scale: 0.9, y: 20 }}
-                      animate={{ scale: 1, y: 0 }}
-                      className="bg-[#0000AA] border-8 border-white p-8 max-w-md w-full shadow-2xl text-center"
-                    >
-                      <Medal size={48} className="text-yellow-400 mx-auto mb-4 animate-bounce" />
-                      <h2 className="text-3xl font-bold mb-2">榮登英雄榜！</h2>
-                      <p className="text-lg mb-6">恭喜獲得 <span className="text-yellow-400 font-bold">{pendingScore?.score}</span> 分</p>
-                      
-                      <div className="space-y-4 mb-8">
-                        <p className="text-sm opacity-70">請輸入您的個人資料：</p>
-                        <div className="flex gap-2 justify-center items-center">
-                          <div className="flex flex-col gap-1">
-                            <input 
-                              type="number" 
-                              placeholder="年級" 
-                              value={gradeInput}
-                              onChange={(e) => setGradeInput(e.target.value)}
-                              className="retro-input w-20 text-center text-xl"
-                            />
-                            <span className="text-[10px] opacity-50">年級</span>
-                          </div>
-                          <span className="text-xl font-bold">-</span>
-                          <div className="flex flex-col gap-1">
-                            <input 
-                              type="number" 
-                              placeholder="班級" 
-                              value={classInput}
-                              onChange={(e) => setClassInput(e.target.value)}
-                              className="retro-input w-20 text-center text-xl"
-                            />
-                            <span className="text-[10px] opacity-50">班級</span>
-                          </div>
-                          <span className="text-xl font-bold">-</span>
-                          <div className="flex flex-col gap-1">
-                            <input 
-                              type="number" 
-                              placeholder="座號" 
-                              value={numberInput}
-                              onChange={(e) => setNumberInput(e.target.value)}
-                              className="retro-input w-20 text-center text-xl"
-                            />
-                            <span className="text-[10px] opacity-50">座號</span>
-                          </div>
-                        </div>
-                        
-                        {submissionError && (
-                          <p className="text-red-400 text-sm font-bold animate-pulse">{submissionError}</p>
-                        )}
-                      </div>
-
-                      <div className="flex flex-col gap-3">
-                        <button
-                          onClick={submitHighScore}
-                          disabled={!gradeInput || !classInput || !numberInput || isSubmitting}
-                          className="retro-button w-full flex items-center justify-center gap-2 py-4 disabled:opacity-50"
-                        >
-                          {isSubmitting ? '傳送中...' : <><Send size={20} /> 登錄英雄榜</>}
-                        </button>
-                        
-                        {!isSubmitting && (
-                          <button 
-                            onClick={resetScoreSubmission}
-                            className="text-white/50 hover:text-white text-sm underline"
-                          >
-                            暫不登錄
-                          </button>
-                        )}
-                      </div>
-                    </motion.div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </motion.div>
+            <WinnerScreen
+              gameState={gameState}
+              leaderboard={leaderboard}
+              onResetToStart={handleResetToStart}
+              showScoreEntry={showScoreEntry}
+              pendingScore={pendingScore}
+              gradeInput={gradeInput}
+              classInput={classInput}
+              numberInput={numberInput}
+              isSubmitting={isSubmitting}
+              submissionError={submissionError}
+              onGradeChange={setGradeInput}
+              onClassChange={setClassInput}
+              onNumberChange={setNumberInput}
+              onSubmit={submitHighScore}
+              onCancel={resetScoreSubmission}
+            />
           )}
         </AnimatePresence>
       </div>
