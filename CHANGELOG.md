@@ -1,5 +1,40 @@
 # 📜 更新日誌 (CHANGELOG)
 
+## [3.8.2] - 2026-04-28（深夜+1）
+
+### 🪝 App.tsx 拆分 第三波 — Hooks 模組化（B1.3）
+新建 3 個 hook 檔到 `src/game/hooks/`：
+
+#### `hooks/useViewportHeight.ts`（27 行）
+- 維護 `--vh` CSS 變數對應 1% 視窗高度
+- 解決 iOS Safari 的 `100vh` 含 URL bar 區域問題
+- 監聽 resize / orientationchange
+
+#### `hooks/useFullscreen.ts`（62 行）
+- 同時支援真實 Fullscreen API + iOS pseudo-fullscreen fallback
+- 回傳 `{ isFullscreen, isPseudoFullscreen, toggle, enter }`
+- 接受 `containerRef`，封裝 fullscreenchange 監聽
+
+#### `hooks/useScoreSubmission.ts`（129 行）
+- 排行榜提交流程完整封裝（modal 狀態 + 三輸入 + loading + error）
+- 內建 10 秒 timeout 防卡死
+- `checkHighScore(leaderboard, score, name)` — 自動判斷 top 5
+- `submitHighScore()` — 送 Firestore + 清空表單
+- `reset()` — 取消按鈕用
+
+### 📉 App.tsx 變化
+- 移除 fullscreen useEffect（28 行）
+- 移除 toggleFullscreen 函式（15 行）
+- 移除 score submission state + 函式（35 行）
+- 取代為 3 個 hook 呼叫
+- **App.tsx 從 2852 → 2784 行（淨削減 68 行）**
+
+### 🎯 累計 B1 進度
+- B1.1 ✅ types + useLeaderboard
+- B1.2 ✅ engine/ 三模組（terrain + collision + physics）
+- B1.3 ✅ hooks/ 三模組（viewport + fullscreen + scoreSubmission）
+- B1.4 ⏳ components/ 拆分（待做）
+
 ## [3.8.1] - 2026-04-28（深夜）
 
 ### 🧱 App.tsx 拆分 第二波 — Engine 模組化（B1.2）

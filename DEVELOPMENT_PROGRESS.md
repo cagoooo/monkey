@@ -1,7 +1,7 @@
 # 📈 專案開發進度表 (DEVELOPMENT_PROGRESS.md)
 
-> 最後更新：2026-04-28（深夜）
-> 目前版本：**v3.8.1** ✅ 已部署上線
+> 最後更新：2026-04-28（深夜+1）
+> 目前版本：**v3.8.2** ✅ 已部署上線
 
 ---
 
@@ -68,13 +68,21 @@
 - [x] App.tsx 接入 `getGroundY` + `generateWindowGrid`（淨削減 ~30 行）
 - [x] Build 3.43s pass，typecheck pass，lint 0 error
 
+### 🟫 Phase 8：v3.8.2 B1.3 Hooks 模組化（2026-04-28 深夜+1）✨
+- [x] **`src/game/hooks/useViewportHeight.ts`**：iOS Safari 的 `--vh` CSS 變數維護
+- [x] **`src/game/hooks/useFullscreen.ts`**：真實 + pseudo fullscreen 統一介面 `{ isFullscreen, isPseudoFullscreen, toggle, enter }`
+- [x] **`src/game/hooks/useScoreSubmission.ts`**：排行榜提交完整流程（modal + 表單 + timeout + error）
+- [x] App.tsx 移除 28 行 useEffect + 15 行 toggleFullscreen + 35 行 submission 邏輯
+- [x] **App.tsx 2852 → 2784 行（淨削減 68 行）**
+- [x] Build 2.59s pass，typecheck pass，lint 0 error
+
 ---
 
 ## 🛠️ 目前狀態 (Current Status)
 
 | 項目 | 狀態 |
 |---|---|
-| **版本** | `v3.8.1` ✅ |
+| **版本** | `v3.8.2` ✅ |
 | **正式站** | https://cagoooo.github.io/monkey/ |
 | **Firebase 專案** | `monkey-pixel-clash`（自有） |
 | **CI/CD** | GitHub Actions（Node 22 LTS） |
@@ -83,8 +91,10 @@
 | **Type Check** | ✅ pass |
 | **Bundle Size** | ✅ **主程式 247 KB / gzip 76 KB**（已拆 firebase/motion/react/icons 4 個 vendor chunks）|
 | **npm audit** | ✅ **0 漏洞** |
-| **App.tsx 行數** | ~2820 行（B1.2 削減 30 行純重構，B4 加 60 行視覺化）|
-| **`src/game/`** | constants ✅ types ✅ engine/ ✅ (terrain + collision + physics) hooks/useLeaderboard ✅ components/PortraitHint ✅，worker/ 仍空 |
+| **App.tsx 行數** | **2784 行**（B1.3 又削減 68 行）|
+| **`src/game/`** | constants ✅ types ✅ engine/ (3 模組) ✅ hooks/ (4 hooks) ✅ components/PortraitHint ✅，worker/ 仍空 |
+| **抽出純函式** | 11 個（engine 模組）|
+| **抽出 hooks** | 4 個（useLeaderboard / useViewportHeight / useFullscreen / useScoreSubmission）|
 | **GitHub Actions runtime** | ⚠️ `actions/checkout@v4` 內部仍 Node 20（要等官方釋出 v5，這是 GitHub 端的事，無法在我們專案修）|
 
 ---
@@ -382,7 +392,8 @@ const POWERUPS: Record<string, PowerUp> = { giant: {...}, acid: {...} };
 | ~~3~~ | ~~E3 Bundle 拆 chunk~~ | ✅ 完成（247 KB 主程式）| 載入快 70% |
 | ~~4~~ | ~~B4 風力視覺化~~ | ✅ 完成（3 層）| UX 大升級 |
 | ~~5~~ | ~~B1.2 拆出 engine/~~ | ✅ 完成（v3.8.1）：terrain + collision + physics 三模組（純函式 + helper 提供） |
-| **6** | **B1.3 拆出 hooks/**：useGameLoop / useInput / useGameState | 2～3 天 | 解開 React deps 警告，把 collision/physics helper 整合進 hook |
+| ~~6~~ | ~~B1.3 拆出 hooks/~~（第一波）| ✅ 完成（v3.8.2）：useViewportHeight / useFullscreen / useScoreSubmission |
+| **6b** | **B1.3 第二波**：useGameLoop（RAF 主迴圈）+ useInput（drag/touch handlers） | 3～5 天 | 整合 collision/physics helper |
 | **7** | **B1.4 拆出 components/**：HUD / StartScreen / WinnerScreen / Leaderboard | 2～3 天 | App.tsx 縮到 < 200 行 |
 | **8** | **B2 物理引擎單元測試** | 1 天 | B1 完成後立刻補 |
 | **9** | **B5 道具系統註冊表化** | 1 天 | 為 C 階段道具擴充鋪路 |
@@ -393,19 +404,20 @@ const POWERUPS: Record<string, PowerUp> = { giant: {...}, acid: {...} };
 
 ---
 
-## 💎 v3.8.1 累計結算（v3.7.0 → 3.8.0 → 3.8.1 連發）
+## 💎 v3.8.2 累計結算（v3.7.0 → 3.8.0 → 3.8.1 → 3.8.2 連發）
 
-| 類別 | v3.6.x | v3.7.0 | v3.8.0 | **v3.8.1** |
-|---|---|---|---|---|
-| 依賴套件 | 686 | 562 | 562 + override | 562 + override |
-| npm 漏洞 | 未檢視 | 7 個 | 0 ✅ | 0 ✅ |
-| 主程式 bundle | 851 KB | 851 KB | 247 KB | 247 KB |
-| Bundle gzip | — | 231 KB | 76 KB | 76 KB |
-| CI Node.js | 20 | 20 | 22 LTS | 22 LTS |
-| 風力視覺化 | 數字 | 數字 | 雲+旗+HUD ✅ | 雲+旗+HUD ✅ |
-| App.tsx 模組 | 0 | constants | + types + 1 hook | **+ engine/3 模組** ✅ |
-| 純函式抽出 | 0 | 0 | 0 | **11 個** ✅ |
-| Firebase 控制權 | sandbox | 自有 ✅ | 自有 ✅ | 自有 ✅ |
+| 類別 | v3.6.x | v3.7.0 | v3.8.0 | v3.8.1 | **v3.8.2** |
+|---|---|---|---|---|---|
+| 依賴套件 | 686 | 562 | 562+override | 562+override | 562+override |
+| npm 漏洞 | 未檢視 | 7 個 | 0 ✅ | 0 ✅ | 0 ✅ |
+| 主程式 bundle | 851 KB | 851 KB | 247 KB | 247 KB | 248 KB |
+| Bundle gzip | — | 231 KB | 76 KB | 76 KB | 77 KB |
+| CI Node.js | 20 | 20 | 22 LTS | 22 LTS | 22 LTS |
+| 風力視覺化 | 數字 | 數字 | 雲+旗+HUD ✅ | ✅ | ✅ |
+| App.tsx 行數 | 2802 | 2802 | 2852 | 2852 | **2784** ✅ |
+| 純函式抽出 | 0 | 0 | 0 | 11 個 | 11 個 |
+| 自訂 hooks | 0 | 0 | 1 | 1 | **4 個** ✅ |
+| Firebase 控制權 | sandbox | 自有 ✅ | ✅ | ✅ | ✅ |
 
 ## 💎 v3.8.0 累計結算（v3.7.0 + v3.8.0 一波接一波）
 

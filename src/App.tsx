@@ -18,6 +18,9 @@ import { soundService } from './services/soundService';
 import { saveHighScore, LeaderboardEntry } from './firebase';
 import { PortraitHint } from './game/components/PortraitHint';
 import { useLeaderboard } from './game/hooks/useLeaderboard';
+import { useViewportHeight } from './game/hooks/useViewportHeight';
+import { useFullscreen } from './game/hooks/useFullscreen';
+import { useScoreSubmission } from './game/hooks/useScoreSubmission';
 import { getGroundY, generateWindowGrid } from './game/engine/terrain';
 
 const COLORS = PLAYER_COLORS;
@@ -136,8 +139,6 @@ export default function App() {
   const [p1NameInput, setP1NameInput] = useState('玩家一');
   const [p2NameInput, setP2NameInput] = useState('玩家二');
   const [message, setMessage] = useState<string>('');
-  const [isFullscreen, setIsFullscreen] = useState(false);
-  const [isPseudoFullscreen, setIsPseudoFullscreen] = useState(false);
   const [isMuted, setIsMuted] = useState(soundService.isMuted());
   const leaderboard = useLeaderboard();
 
@@ -148,13 +149,32 @@ export default function App() {
     timestamp: new Date()
   }));
 
-  const [showScoreEntry, setShowScoreEntry] = useState(false);
-  const [pendingScore, setPendingScore] = useState<{ name: string, score: number } | null>(null);
-  const [gradeInput, setGradeInput] = useState('');
-  const [classInput, setClassInput] = useState('');
-  const [numberInput, setNumberInput] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [submissionError, setSubmissionError] = useState<string | null>(null);
+  // 全螢幕 + viewport-height 由 hook 管理
+  useViewportHeight();
+  const {
+    isFullscreen,
+    isPseudoFullscreen,
+    toggle: toggleFullscreen,
+    enter: enterFullscreen,
+  } = useFullscreen(gameContainerRef);
+
+  // 排行榜提交流程由 hook 管理
+  const {
+    showScoreEntry,
+    pendingScore,
+    gradeInput,
+    classInput,
+    numberInput,
+    isSubmitting,
+    submissionError,
+    setGradeInput,
+    setClassInput,
+    setNumberInput,
+    checkHighScore,
+    submitHighScore,
+    reset: resetScoreSubmission,
+  } = useScoreSubmission();
+
   const lastWindowToggle = useRef<number>(0);
   const nextGameStarter = useRef<1 | 2>(1);
   const hasCheckedHighScore = useRef(false);
@@ -324,46 +344,19 @@ export default function App() {
     return () => clearInterval(timer);
   }, [gameState?.status, gameState?.currentPlayer]);
 
-  useEffect(() => {
-    const handleFullscreenChange = () => {
-      const isFull = !!document.fullscreenElement;
-      setIsFullscreen(isFull);
-      if (!isFull) {
-        setIsPseudoFullscreen(false);
-      }
-    };
-
-    const handleResize = () => {
-      // Update vh variable for mobile
-      const vh = window.innerHeight * 0.01;
-      document.documentElement.style.setProperty('--vh', `${vh}px`);
-    };
-
-    document.addEventListener('fullscreenchange', handleFullscreenChange);
-    window.addEventListener('resize', handleResize);
-    window.addEventListener('orientationchange', handleResize);
-    
-    // Initial call
-    handleResize();
-
-    return () => {
-      document.removeEventListener('fullscreenchange', handleFullscreenChange);
-      window.removeEventListener('resize', handleResize);
-      window.removeEventListener('orientationchange', handleResize);
-    };
-  }, []);
+  // fullscreen / viewport-height 邏輯已搬到 useFullscreen / useViewportHeight hooks
 
   useEffect(() => {
     if (gameState?.status === 'tournamentOver' && !hasCheckedHighScore.current) {
       const winnerIdx = gameState.tournamentWinner === 1 ? 0 : 1;
       const winnerScore = gameState.roundHistory[winnerIdx === 0 ? 'p1' : 'p2'].reduce((a, b) => a + b, 0);
       const winnerName = gameState.playerNames[winnerIdx];
-      checkHighScore(winnerIdx, winnerScore, winnerName);
+      checkHighScore(leaderboard, winnerScore, winnerName);
       hasCheckedHighScore.current = true;
     } else if (gameState?.status !== 'tournamentOver') {
       hasCheckedHighScore.current = false;
     }
-  }, [gameState?.status, gameState?.tournamentWinner, gameState?.roundHistory, gameState?.playerNames]);
+  }, [gameState?.status, gameState?.tournamentWinner, gameState?.roundHistory, gameState?.playerNames, leaderboard, checkHighScore]);
 
   useEffect(() => {
     // Stop BGM on unmount
@@ -372,21 +365,7 @@ export default function App() {
     };
   }, []);
 
-  const toggleFullscreen = () => {
-    if (!document.fullscreenElement && !isPseudoFullscreen) {
-      gameContainerRef.current?.requestFullscreen().catch(err => {
-        console.warn(`Real fullscreen failed, using pseudo-fullscreen: ${err.message}`);
-        setIsPseudoFullscreen(true);
-        setIsFullscreen(true);
-      });
-    } else {
-      if (document.fullscreenElement) {
-        document.exitFullscreen();
-      }
-      setIsPseudoFullscreen(false);
-      setIsFullscreen(false);
-    }
-  };
+  // toggleFullscreen / enterFullscreen 由 useFullscreen hook 提供
 
   const toggleMute = () => {
     const newMuted = !isMuted;
@@ -526,60 +505,17 @@ export default function App() {
     const scaledG = gVal * (0.25 / 9.8);
     initGame(scaledG);
     
-    // Enter fullscreen
-    if (!document.fullscreenElement && !isPseudoFullscreen) {
-      gameContainerRef.current?.requestFullscreen().catch(err => {
-        console.warn(`Auto fullscreen failed, using pseudo-fullscreen: ${err.message}`);
-        setIsPseudoFullscreen(true);
-        setIsFullscreen(true);
-      });
-    }
+    // 開始遊戲時自動進入全螢幕
+    enterFullscreen();
   };
 
   const handleResetToStart = () => {
     setGameState(null);
     setShowStartScreen(true);
-    setShowScoreEntry(false);
-    setPendingScore(null);
+    resetScoreSubmission();
   };
 
-  const checkHighScore = (winnerIdx: number, score: number, name: string) => {
-    const isTop5 = leaderboard.length < 5 || score > leaderboard[leaderboard.length - 1].score;
-    if (isTop5 && score > 0) {
-      setPendingScore({ name, score });
-      setShowScoreEntry(true);
-    }
-  };
-
-  const submitHighScore = async () => {
-    if (!gradeInput || !classInput || !numberInput || !pendingScore) return;
-    
-    setIsSubmitting(true);
-    setSubmissionError(null);
-
-    // Timeout after 10 seconds
-    const timeoutPromise = new Promise((_, reject) => 
-      setTimeout(() => reject(new Error('傳送超時，請檢查網路連線')), 10000)
-    );
-
-    try {
-      const fullName = `${gradeInput}年${classInput}班${numberInput}號`;
-      await Promise.race([
-        saveHighScore(fullName, pendingScore.score),
-        timeoutPromise
-      ]);
-      setShowScoreEntry(false);
-      setPendingScore(null);
-      setGradeInput('');
-      setClassInput('');
-      setNumberInput('');
-    } catch (err) {
-      console.error("Failed to submit score:", err);
-      setSubmissionError(err instanceof Error ? err.message : '傳送失敗，請稍後再試');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
+  // checkHighScore / submitHighScore 由 useScoreSubmission hook 提供
 
   useEffect(() => {
     // Don't auto-init on mount, wait for start screen
@@ -2820,11 +2756,7 @@ export default function App() {
                         
                         {!isSubmitting && (
                           <button 
-                            onClick={() => {
-                              setShowScoreEntry(false);
-                              setPendingScore(null);
-                              setSubmissionError(null);
-                            }}
+                            onClick={resetScoreSubmission}
                             className="text-white/50 hover:text-white text-sm underline"
                           >
                             暫不登錄
