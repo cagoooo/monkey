@@ -1,7 +1,7 @@
 # 📈 專案開發進度表 (DEVELOPMENT_PROGRESS.md)
 
 > 最後更新：2026-04-29
-> 目前版本：**v3.10.0** ✅ 已部署上線（B1 全部完成 🏆）
+> 目前版本：**v3.11.0** ✅ 已部署上線（B1 + B2 + B5 完成 🧪🎁）
 
 ---
 
@@ -87,6 +87,16 @@
 - [x] 清掉 11 個 unused imports（lint warnings 21 → 11）
 - [x] Build 3.36s pass，typecheck pass
 
+### 🟧 Phase 11：v3.11.0 B2 單元測試 + B5 道具註冊表（2026-04-29）✨
+- [x] **B2 vitest 4.1.5 + 6 個測試檔（72 tests / 347ms）**
+  - collision.test.ts（13）/ physics.test.ts（17）/ scoring.test.ts（6）
+  - terrain.test.ts（16）/ turnTransition.test.ts（10，mock soundService）
+  - powerups.test.ts（10，B5 同步補測試）
+- [x] **B5 `src/game/engine/powerups.ts`** registry pattern + `getPowerUp(type)` helper
+- [x] useGameLoop 重構 monkey-hit + building-hit 用註冊表查表（消除 30+ 行散落數字）
+- [x] README 大幅重寫含完整檔案結構與 **Security 章節**
+- [x] npm scripts: `test` / `test:watch` / `test:ui`
+
 ### 🏆 Phase 10：v3.10.0 B1.5 App.tsx 拆分終局（2026-04-29）✨
 - [x] **`src/game/engine/scoring.ts`**：`calculateScore(hitPos, shooterPos, targetPos)` 純函式
 - [x] **`src/game/engine/turnTransition.ts`**：`handleTurnTransition(prev, next)` 回合切換邏輯
@@ -104,7 +114,7 @@
 
 | 項目 | 狀態 |
 |---|---|
-| **版本** | `v3.10.0` ✅ |
+| **版本** | `v3.11.0` ✅ |
 | **正式站** | https://cagoooo.github.io/monkey/ |
 | **Firebase 專案** | `monkey-pixel-clash`（自有） |
 | **CI/CD** | GitHub Actions（Node 22 LTS） |
@@ -115,7 +125,8 @@
 | **npm audit** | ✅ **0 漏洞** |
 | **App.tsx 行數** | **1590 行**（B1.5 又削減 828 行，**累計從 2802 → 1590 = -43%**）🏆 |
 | **`src/game/`** | constants ✅ types ✅ **engine/ (5 模組) ✅** **hooks/ (6 hooks) ✅** **components/ (6 元件) ✅**，worker/ 仍空 |
-| **抽出 engine 模組** | 5 個（terrain / collision / physics / scoring / turnTransition）|
+| **抽出 engine 模組** | 6 個（terrain / collision / physics / scoring / turnTransition / **powerups** ✅）|
+| **單元測試** | **72 個** pass / 347ms（vitest）✅ |
 | **抽出 hooks** | 6 個（useLeaderboard / useViewportHeight / useFullscreen / useScoreSubmission / useInput / useGameLoop）|
 | **抽出 components** | 6 個（PortraitHint + decorations + Leaderboard + ScoreEntryModal + WinnerScreen + StartScreen）|
 | **ESLint warnings** | 6 個（從 17 一路清到 6）|
@@ -419,8 +430,8 @@ const POWERUPS: Record<string, PowerUp> = { giant: {...}, acid: {...} };
 | ~~6~~ | ~~B1.3 拆出 hooks/~~（第一波）| ✅ 完成（v3.8.2）：useViewportHeight / useFullscreen / useScoreSubmission |
 | ~~7~~ | ~~B1.4 拆出 components/~~ | ✅ 完成（v3.9.0） |
 | ~~6b~~ | ~~B1.5 useGameLoop + useInput~~ | ✅ 完成（v3.10.0）：App.tsx 削減 828 行 🏆 |
-| **8** | **B2 物理引擎單元測試** | 1 天 | B1 完成後立刻補 |
-| **9** | **B5 道具系統註冊表化** | 1 天 | 為 C 階段道具擴充鋪路 |
+| ~~8~~ | ~~B2 物理引擎單元測試~~ | ✅ 完成（v3.11.0）：72 tests / 347ms |
+| ~~9~~ | ~~B5 道具系統註冊表化~~ | ✅ 完成（v3.11.0）：POWERUPS registry + useGameLoop 接入 |
 | **10** | **B3 Web Worker 物理** | 2 天 | iPhone 11 不掉幀 |
 | **11** | **B6 Cloud Function 防刷分** | 1 天 + Blaze 升級 | A5 的徹底進化版 |
 | **12** | **C3 AI 電腦對手 (Gemini)** | 1 週 | 單人模式上線 |

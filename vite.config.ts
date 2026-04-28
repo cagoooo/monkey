@@ -1,3 +1,4 @@
+/// <reference types="vitest/config" />
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
@@ -93,6 +94,13 @@ export default defineConfig(({mode}) => {
       // HMR is disabled in AI Studio via DISABLE_HMR env var.
       // Do not modify—file watching is disabled to prevent flickering during agent edits.
       hmr: process.env.DISABLE_HMR !== 'true',
+    },
+    test: {
+      // 純函式測試只需 node 環境（不用 jsdom），更快
+      environment: 'node',
+      include: ['src/**/*.test.ts', 'src/**/*.test.tsx'],
+      // 統一報告格式
+      reporters: 'default',
     },
   };
 });

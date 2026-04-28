@@ -1,5 +1,44 @@
 # 📜 更新日誌 (CHANGELOG)
 
+## [3.11.0] - 2026-04-29
+
+### 🧪 B2 物理引擎單元測試（vitest）
+- 新增 `vitest@4.1.5` + `@vitest/ui` + `happy-dom`
+- `vite.config.ts` 加 vitest 設定（`environment: 'node'` 純函式測試最快）
+- 新增 npm scripts：`test` / `test:watch` / `test:ui`
+- 5 個測試檔涵蓋全部 engine 純函式：
+  - `collision.test.ts`（13 tests）— distance / distSq / isWithin / vecFromAngle
+  - `physics.test.ts`（17 tests）— applyForces / step / calcDragPower / calcDragAngle
+  - `scoring.test.ts`（6 tests）— calculateScore（含 self-hit 與 div-by-zero 防護）
+  - `terrain.test.ts`（16 tests）— getGroundY / isPointDestroyed / generateWindowGrid
+  - `turnTransition.test.ts`（10 tests）— 一般切換 + 5 回合地面爆炸懲罰（mock soundService）
+- **執行結果：72/72 pass，347ms 跑完**
+
+### 🎁 B5 道具系統註冊表化
+- 新增 **`src/game/engine/powerups.ts`**：`POWERUPS` registry + `getPowerUp(type)` helper
+- 取代 `useGameLoop` 內散落的 `type === 'giant' ? X : type === 'acid' ? Y : Z` 巢狀三元式
+- 每個道具 spec 含：`monkeyHit` / `buildingHit`（半徑、震動、粒子數、顏色）+ 可選 `trailParticle`
+- `useGameLoop` 重構 monkey-hit + building-hit 兩段查表，**減少 30+ 行散落數字**
+- 5 種道具完整登記：normal / giant / acid / beam / meteor
+- 新增 `powerups.test.ts`（10 tests）驗證註冊表完整性與威力遞增關係
+- **新增道具未來只要在 POWERUPS 加一筆 + 在 ProjectileType 加 union 成員**
+
+### 📚 文件強化
+- 大幅重寫 `README.md`：加入 Live Demo / 特色清單 / 完整檔案結構樹
+- 新增 **「🔐 Security」章節**：Firebase Web API Key 不是密碼、三層防禦說明、GitHub Secret Scanning 處理 SOP
+- 永久止血同類安全疑問
+
+### 🚦 v3.11.0 數字結算
+
+| 指標 | v3.10.0 | **v3.11.0** | 變化 |
+|---|---|---|---|
+| Engine 純函式 | 11 | 11 | — |
+| 註冊表 | 0 | **POWERUPS（5 道具）** | +1 |
+| 單元測試 | **0** | **72** | +72 ✅ |
+| 測試覆蓋（engine 模組） | 0% | ~80% | ✅ |
+| README 完整度 | 預設模板 | 完整含 Security | ✅ |
+| Build 時間 | 2.86s | 2.98s | +4% |
+
 ## [3.10.0] - 2026-04-29
 
 ### 🏆 B1.5 完成 — App.tsx 拆分終局（B 階段最大里程碑）

@@ -1,6 +1,5 @@
 import { initializeApp } from 'firebase/app';
 import { getFirestore, collection, addDoc, query, orderBy, limit, onSnapshot, serverTimestamp } from 'firebase/firestore';
-import { getAuth } from 'firebase/auth';
 
 // Firebase 設定從環境變數讀取（Vite 透過 define 注入，或 GitHub Actions 透過 inject.py 替換）
 const firebaseConfig = {
@@ -14,14 +13,15 @@ const firebaseConfig = {
 
 const firestoreDatabaseId = import.meta.env.VITE_FIREBASE_DATABASE_ID || '__FIREBASE_DATABASE_ID__';
 
-// Initialize Firebase SDK
+// Initialize Firebase SDK（只啟用 Firestore，不啟用 Auth — 排行榜不需要登入）
 const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app, firestoreDatabaseId);
-export const auth = getAuth(app);
 
-// Firebase Auth is initialized but we don't force sign-in here to avoid errors
-// if specific providers (like anonymous) are not enabled in the console.
-// The current leaderboard rules allow public access for this arcade-style game.
+// 注意：未實際使用 Firebase Auth，因此不呼叫 getAuth(app)。
+// 否則 SDK 會自動初始化 Auth iframe 並打 identitytoolkit.googleapis.com，
+// 觸發 API Key referrer 限制的 403（authDomain 不在白名單）。
+// 未來真要做 Google 登入時：(1) 加入 import { getAuth } from 'firebase/auth'
+// (2) 把 ${authDomain}/* 加進 API Key allowed referrers
 
 export interface LeaderboardEntry {
   id?: string;

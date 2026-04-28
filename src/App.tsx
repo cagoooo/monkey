@@ -271,11 +271,14 @@ export default function App() {
   };
 
   const handleStartGame = () => {
+    // 在 user gesture 同步路徑內解鎖 AudioContext（雙保險，main.tsx 也有全域 listener）
+    soundService.unlock();
+
     const gVal = parseFloat(gravityInput) || 9.8;
     // Scale 9.8 to 0.25
     const scaledG = gVal * (0.25 / 9.8);
     initGame(scaledG);
-    
+
     // 開始遊戲時自動進入全螢幕
     enterFullscreen();
   };

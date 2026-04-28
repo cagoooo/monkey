@@ -26,6 +26,7 @@ import {soundService} from '../../services/soundService';
 import {getGroundY} from '../engine/terrain';
 import {calculateScore} from '../engine/scoring';
 import {handleTurnTransition} from '../engine/turnTransition';
+import {getPowerUp} from '../engine/powerups';
 
 const TICK_MS = 20;
 
@@ -343,16 +344,15 @@ export function useGameLoop({status, setGameState, initGame}: UseGameLoopArgs) {
             const newPoints = [...prev.currentRoundPoints] as [number, number];
             newPoints[prev.currentPlayer - 1] += 100;
 
-            const particleCount =
-              prev.banana?.type === 'giant' ? 150 : prev.banana?.type === 'acid' ? 100 : 60;
-            const newParticles: Particle[] = Array.from({length: particleCount}).flatMap(() => {
+            const monkeySpec = getPowerUp(prev.banana?.type);
+            const newParticles: Particle[] = Array.from({length: monkeySpec.monkeyHit.particleCount}).flatMap(() => {
               const base = {
                 id: Math.random(),
                 pos: {...newPos},
                 vel: {x: (Math.random() - 0.5) * 20, y: (Math.random() - 0.5) * 20},
                 life: 50 + Math.random() * 40,
                 maxLife: 90,
-                color: prev.banana?.type === 'acid' ? '#00FF00' : '#FFCC99',
+                color: monkeySpec.monkeyHit.coreColor,
                 size: 2 + Math.random() * 6,
                 type: 'normal' as ParticleType,
               };
@@ -392,21 +392,11 @@ export function useGameLoop({status, setGameState, initGame}: UseGameLoopArgs) {
               explosion: {
                 pos: newPos,
                 radius: 0,
-                maxRadius:
-                  prev.banana.type === 'giant'
-                    ? 350
-                    : prev.banana.type === 'acid'
-                    ? 180
-                    : 40,
+                maxRadius: monkeySpec.monkeyHit.maxRadius,
                 type: prev.banana.type,
               },
               particles: [...next.particles, ...newParticles],
-              shake:
-                prev.banana.type === 'giant'
-                  ? 60
-                  : prev.banana.type === 'acid'
-                  ? 40
-                  : 25,
+              shake: monkeySpec.monkeyHit.shake,
             };
           }
 
@@ -418,13 +408,8 @@ export function useGameLoop({status, setGameState, initGame}: UseGameLoopArgs) {
               );
 
               if (!inHole) {
-                const particleCount =
-                  prev.banana?.type === 'giant'
-                    ? 120
-                    : prev.banana?.type === 'acid'
-                    ? 100
-                    : 40;
-                const newParticles: Particle[] = Array.from({length: particleCount}).flatMap(
+                const buildSpec = getPowerUp(prev.banana?.type);
+                const newParticles: Particle[] = Array.from({length: buildSpec.buildingHit.particleCount}).flatMap(
                   () => {
                     const isAcid = prev.banana?.type === 'acid';
                     const isGiant = prev.banana?.type === 'giant';
@@ -498,12 +483,7 @@ export function useGameLoop({status, setGameState, initGame}: UseGameLoopArgs) {
                   explosion: {
                     pos: newPos,
                     radius: 0,
-                    maxRadius:
-                      prev.banana.type === 'acid'
-                        ? 150
-                        : prev.banana.type === 'giant'
-                        ? 300
-                        : 30,
+                    maxRadius: buildSpec.buildingHit.maxRadius,
                     type: prev.banana.type,
                   },
                   currentRoundPoints: (() => {
@@ -513,18 +493,10 @@ export function useGameLoop({status, setGameState, initGame}: UseGameLoopArgs) {
                   })(),
                   destructions: [
                     ...prev.destructions,
-                    {
-                      pos: newPos,
-                      radius:
-                        prev.banana.type === 'acid'
-                          ? 80
-                          : prev.banana.type === 'giant'
-                          ? 150
-                          : 15,
-                    },
+                    {pos: newPos, radius: buildSpec.buildingHit.destructionRadius},
                   ],
                   particles: [...next.particles, ...newParticles],
-                  shake: prev.banana.type === 'normal' ? 15 : 45,
+                  shake: buildSpec.buildingHit.shake,
                 };
               }
             }
