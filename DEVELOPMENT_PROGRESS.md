@@ -1,7 +1,7 @@
 # 📈 專案開發進度表 (DEVELOPMENT_PROGRESS.md)
 
-> 最後更新：2026-04-28（晚間）
-> 目前版本：**v3.7.0** ✅ 已部署上線
+> 最後更新：2026-04-28（深夜）
+> 目前版本：**v3.8.0** ✅ 已部署上線
 
 ---
 
@@ -52,24 +52,33 @@
 - [x] **專案 memory**：`firebase_project_owner.md` 記錄 monkey-pixel-clash 擁有者
 - [x] **OAuth 非互動式繞過**：發現並文件化用 PowerShell `Start-Process` 開新 cmd 視窗的解法
 
+### 🟧 Phase 6：v3.8.0 維運 Hardening + 風力視覺化 + App 拆分第一波（2026-04-28 深夜）✨
+- [x] **E1 npm audit 0 漏洞**：用 `overrides` 強制 `serialize-javascript@^7.0.5`，升 vite-plugin-pwa 0.21 → 1.2.0，從 7 漏洞（1 critical）降到 **0**
+- [x] **E2 Node.js 22 LTS**：CI workflow 升級，避開 2026-09-16 棄用線
+- [x] **E3 Bundle 拆 chunk**：主程式 **851 KB → 247 KB**（gzip 231 → 76 KB），firebase / motion / react / icons 各自 vendor chunk
+- [x] **B4 風力視覺化三層**：背景雲層（速度跟風）+ 頂部旗幟（紅藍變色 + 抖動頻率）+ 底部 HUD 強化（中央刻度 + 端點箭頭）
+- [x] **B1.1 App.tsx 拆分第一波**：
+  - `src/types.ts` → `src/game/types.ts`（舊路徑 re-export shim）
+  - 新增 `src/game/hooks/useLeaderboard.ts`
+
 ---
 
 ## 🛠️ 目前狀態 (Current Status)
 
 | 項目 | 狀態 |
 |---|---|
-| **版本** | `v3.7.0` ✅ |
+| **版本** | `v3.8.0` ✅ |
 | **正式站** | https://cagoooo.github.io/monkey/ |
 | **Firebase 專案** | `monkey-pixel-clash`（自有） |
-| **CI/CD** | GitHub Actions（32s build & deploy） |
+| **CI/CD** | GitHub Actions（Node 22 LTS） |
 | **PWA** | ✅ 可離線、可加入主畫面、有更新橫幅 |
 | **Lint** | ✅ ESLint 9 Flat Config（0 error / 16 warning）|
 | **Type Check** | ✅ pass |
-| **Bundle Size** | ⚠️ index.js **851 KB**（gzip 231 KB），超過 vite 預設 500 KB 警告線 |
-| **npm audit** | ⚠️ **7 個漏洞**（1 critical / 5 high / 1 moderate）|
-| **GitHub Actions Node.js** | ⚠️ 仍用 Node 20，2026-09-16 前須升 Node 24 |
-| **App.tsx 行數** | 2802 行單檔（B1 待拆）|
-| **`src/game/`** | constants.ts ✅ + components/PortraitHint.tsx ✅，engine/ hooks/ worker/ 仍空 |
+| **Bundle Size** | ✅ **主程式 247 KB / gzip 76 KB**（已拆 firebase/motion/react/icons 4 個 vendor chunks）|
+| **npm audit** | ✅ **0 漏洞** |
+| **App.tsx 行數** | ~2800 行（B1.1 已小拆，types + 1 hook 移出）|
+| **`src/game/`** | constants ✅ types ✅ components/PortraitHint ✅ hooks/useLeaderboard ✅，engine/ worker/ 仍空 |
+| **GitHub Actions runtime** | ⚠️ `actions/checkout@v4` 內部仍 Node 20（要等官方釋出 v5，這是 GitHub 端的事，無法在我們專案修）|
 
 ---
 
@@ -357,20 +366,40 @@ const POWERUPS: Record<string, PowerUp> = { giant: {...}, acid: {...} };
 
 ---
 
-## 🎯 我建議的下一步執行順序
+## 🎯 下一步執行順序（v3.8.0 後）
 
-| # | 項目 | 預估工時 | 影響 |
+| # | 項目 | 狀態 / 預估工時 | 影響 |
 |---|------|---------|------|
-| **1** | **E1 npm audit fix** | 30 分鐘 | 排除 critical 漏洞 |
-| **2** | **E2 Node.js 24 升級** | 30 分鐘 | 提早閃 9 月棄用 |
-| **3** | **E3 Bundle 拆 chunk** | 1 小時 | 手機載入快 30% |
-| **4** | **B4 風力視覺化** | 4 小時 | UX 升級 CP 值最高 |
-| **5** | **B1 拆 App.tsx** | 1～2 週 | 解鎖後續所有擴充 |
-| **6** | **B6 Cloud Function 防刷分** | 1 天 | A5 的徹底進化版 |
-| **7** | **C3 AI 電腦對手 (Gemini)** | 1 週 | 單人模式上線 |
-| **8** | **C6 教學整合** | 持續性 | 你的最強差異化 |
+| ~~1~~ | ~~E1 npm audit fix~~ | ✅ 完成（v3.8.0）| 0 漏洞 |
+| ~~2~~ | ~~E2 Node.js 升級~~ | ✅ 完成（Node 22 LTS）| 避開棄用 |
+| ~~3~~ | ~~E3 Bundle 拆 chunk~~ | ✅ 完成（247 KB 主程式）| 載入快 70% |
+| ~~4~~ | ~~B4 風力視覺化~~ | ✅ 完成（3 層）| UX 大升級 |
+| **5** | **B1.2 拆出 engine/**：physics.ts / collision.ts / terrain.ts | 3～5 天 | App.tsx 預估縮 1500 行 |
+| **6** | **B1.3 拆出 hooks/**：useGameLoop / useInput / useGameState | 2～3 天 | 解開 React deps 警告 |
+| **7** | **B1.4 拆出 components/**：HUD / StartScreen / WinnerScreen / Leaderboard | 2～3 天 | App.tsx 縮到 < 200 行 |
+| **8** | **B2 物理引擎單元測試** | 1 天 | B1 完成後立刻補 |
+| **9** | **B5 道具系統註冊表化** | 1 天 | 為 C 階段道具擴充鋪路 |
+| **10** | **B3 Web Worker 物理** | 2 天 | iPhone 11 不掉幀 |
+| **11** | **B6 Cloud Function 防刷分** | 1 天 + Blaze 升級 | A5 的徹底進化版 |
+| **12** | **C3 AI 電腦對手 (Gemini)** | 1 週 | 單人模式上線 |
+| **13** | **C6 教學整合**（Blockly / 班級榜 / GIF）| 持續性 | 你的最強差異化 |
 
 ---
+
+## 💎 v3.8.0 累計結算（v3.7.0 + v3.8.0 一波接一波）
+
+| 類別 | v3.6.x | v3.7.0 | **v3.8.0** |
+|---|---|---|---|
+| 依賴套件 | 686 | 562 | 562 + override |
+| npm 漏洞 | 未檢視 | 7 個（1 critical）| **0** ✅ |
+| 主程式 bundle | （未拆）| 851 KB | **247 KB** ✅ |
+| Bundle gzip | — | 231 KB | **76 KB** ✅ |
+| CI Node.js | 20 | 20 | **22 LTS** ✅ |
+| 風力視覺化 | 數字 | 數字 | **雲層 + 旗幟 + HUD 箭頭** ✅ |
+| App.tsx 模組化 | 0 | constants 抽出 | constants + types + 1 hook ✅ |
+| Firebase 控制權 | sandbox 借用 | 自有 ✅ | 自有 ✅ |
+| API Key 限制 | 無 | referrer + API ✅ | referrer + API ✅ |
+| PWA | 無 | ✅ | ✅ + workbox 1.2 |
 
 ## 💎 v3.7.0 結算
 
