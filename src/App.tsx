@@ -18,24 +18,9 @@ import { soundService } from './services/soundService';
 import { saveHighScore, LeaderboardEntry } from './firebase';
 import { PortraitHint } from './game/components/PortraitHint';
 import { useLeaderboard } from './game/hooks/useLeaderboard';
+import { getGroundY, generateWindowGrid } from './game/engine/terrain';
 
 const COLORS = PLAYER_COLORS;
-
-const getGroundY = (x: number, buildings: Building[], destructions: Destruction[]) => {
-  const building = buildings.find(b => x >= b.x && x <= b.x + b.width);
-  if (!building) return CANVAS_HEIGHT - 8.75;
-
-  // Start checking from the top of the building downwards
-  for (let y = building.y; y < CANVAS_HEIGHT; y += 2) {
-    const inHole = destructions.some(d => 
-      Math.sqrt((x - d.pos.x) ** 2 + (y - d.pos.y) ** 2) < d.radius
-    );
-    if (!inHole) {
-      return y - 8.75; // Monkey bottom is at y+8.75, so pos.y is y-8.75
-    }
-  }
-  return CANVAS_HEIGHT - 8.75;
-};
 
 const BananaIcon = ({ size = 16 }: { size?: number }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -417,15 +402,10 @@ export default function App() {
       const width = 60 + Math.random() * 60;
       const height = 100 + Math.random() * 300;
       
-      const rows = Math.floor(height / 15);
-      const cols = Math.floor(width / 10);
-      const windows: boolean[][] = [];
-      for (let r = 0; r < rows; r++) {
-        windows[r] = [];
-        for (let c = 0; c < cols; c++) {
-          windows[r][c] = Math.random() > 0.3;
-        }
-      }
+      const windows = generateWindowGrid(
+        Math.floor(height / 15),
+        Math.floor(width / 10)
+      );
 
       buildings.push({
         x: currentX,
@@ -461,23 +441,15 @@ export default function App() {
         const targetIdx = middleIndices[Math.floor(Math.random() * middleIndices.length)];
         const newHeight = maxHeight + 20 + Math.random() * 100;
         const b = buildings[targetIdx];
-        
-        // Update building properties
-        const rows = Math.floor(newHeight / 15);
-        const cols = Math.floor(b.width / 10);
-        const windows: boolean[][] = [];
-        for (let r = 0; r < rows; r++) {
-          windows[r] = [];
-          for (let c = 0; c < cols; c++) {
-            windows[r][c] = Math.random() > 0.3;
-          }
-        }
-        
+
         buildings[targetIdx] = {
           ...b,
           height: newHeight,
           y: CANVAS_HEIGHT - newHeight,
-          windows
+          windows: generateWindowGrid(
+            Math.floor(newHeight / 15),
+            Math.floor(b.width / 10)
+          ),
         };
       }
     }

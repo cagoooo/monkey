@@ -1,5 +1,39 @@
 # 📜 更新日誌 (CHANGELOG)
 
+## [3.8.1] - 2026-04-28（深夜）
+
+### 🧱 App.tsx 拆分 第二波 — Engine 模組化（B1.2）
+新建 `src/game/engine/` 目錄，抽出三個純函式模組：
+
+#### `engine/terrain.ts`
+- `getGroundY(x, buildings, destructions)` — 從 App.tsx 頂部移過來，現在是 import
+- `isPointDestroyed(x, y, destructions)` — 從 getGroundY 內部邏輯抽出
+- `generateWindowGrid(rows, cols, lightProb)` — 取代 App.tsx 內 2 處重複的窗戶生成迴圈
+- 匯出常數 `MONKEY_FOOT_OFFSET`（取代多處硬寫的 `8.75`）
+
+#### `engine/collision.ts`
+- `distance(a, b)` — 取代 15+ 處 `Math.sqrt((dx) ** 2 + (dy) ** 2)` 模式
+- `distSq(a, b)` — 比較用，省一個 sqrt
+- `isWithin(point, center, radius)` — 圓內判定 helper
+- `vecFromAngle(angleRad, magnitude)` — 角度轉向量
+
+#### `engine/physics.ts`
+- `applyForces(vel, gravity, wind, airResistance)` — 純前向步進
+- `step(pos, vel)` — 位置更新
+- `calcDragPower(start, current)` — 拖曳力道
+- `calcDragAngle(start, current, mirrorX)` — 拖曳角度
+
+### 📉 App.tsx 淨削減
+- 移除 `getGroundY` 函式（17 行）
+- 移除兩處重複的 window-grid 生成迴圈（共 16 行）
+- 加入兩行 import
+- 純重構部分：**淨削減 ~30 行**
+
+### ⚠️ 注意事項
+- `collision.ts` 與 `physics.ts` 目前先**只提供 helper**，App.tsx 內 15+ 處 inline `Math.sqrt` 沒有逐一替換（避免漏改風險）
+- 後續 B1.3 拆 hooks 時會逐步把 inline 數學替換為 helper
+- ESLint warning 17 個（多 1 個原因為 hooks 拆分後 deps 偵測差異），B1.4 完成後會大幅減少
+
 ## [3.8.0] - 2026-04-28（晚間）
 
 ### 🛡️ 維運 Hardening (E 階段)
