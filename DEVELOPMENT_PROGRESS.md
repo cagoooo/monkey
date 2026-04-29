@@ -1,7 +1,7 @@
 # 📈 專案開發進度表 (DEVELOPMENT_PROGRESS.md)
 
 > 最後更新：2026-04-29
-> 目前版本：**v3.12.0** ✅ 已部署上線（B1+B2+B5+B6 ✅，B3 量測先行 📊）
+> 目前版本：**v3.13.0** ✅ 已部署上線（**B6 Function 正式上線** 🛡️）
 
 ---
 
@@ -87,6 +87,15 @@
 - [x] 清掉 11 個 unused imports（lint warnings 21 → 11）
 - [x] Build 3.36s pass，typecheck pass
 
+### 🛡️ Phase 13：v3.13.0 B6 Cloud Function 正式部署上線（2026-04-29）✨
+- [x] Blaze 計費啟用 + 5 個 Cloud Functions v2 必要 IAM 角色加好
+- [x] `firebase deploy --only functions:monkey` 成功（asia-east1, Node 22, Gen 2）
+- [x] Firestore composite index 部署完成（leaderboard name+timestamp）
+- [x] **端對端測試 3 個場景全綠**（合法 / rate limit / invalid）
+- [x] Firestore Rules 收緊：client `allow create: if false`，強制走 Function
+- [x] GitHub Secret `VITE_USE_CALLABLE_SUBMIT=true` + workflow 注入
+- [x] **防刷分 3 層防禦完整就緒**（前端 + Function + Rules）
+
 ### 🟪 Phase 12：v3.12.0 B6 Cloud Function 就緒 + B3 量測先行（2026-04-29）✨
 - [x] **B6 functions/ 目錄完整建立**
   - `submitScore.ts` Callable v2（schema + rate limit + 可疑值 logging）
@@ -127,7 +136,7 @@
 
 | 項目 | 狀態 |
 |---|---|
-| **版本** | `v3.12.0` ✅ |
+| **版本** | `v3.13.0` ✅ |
 | **正式站** | https://cagoooo.github.io/monkey/ |
 | **Firebase 專案** | `monkey-pixel-clash`（自有） |
 | **CI/CD** | GitHub Actions（Node 22 LTS） |
@@ -446,7 +455,7 @@ const POWERUPS: Record<string, PowerUp> = { giant: {...}, acid: {...} };
 | ~~8~~ | ~~B2 物理引擎單元測試~~ | ✅ 完成（v3.11.0）：72 tests / 347ms |
 | ~~9~~ | ~~B5 道具系統註冊表化~~ | ✅ 完成（v3.11.0）：POWERUPS registry + useGameLoop 接入 |
 | ~~10~~ | ~~B3 Web Worker 物理~~ | ✅ 重新評估後**不做**（v3.12.0）— 改為 frame timing + 量測先行；分析見 docs/B3-WEB-WORKER-ANALYSIS.md |
-| ~~11~~ | ~~B6 Cloud Function 防刷分~~ | ✅ 程式碼就緒（v3.12.0）— 待使用者升 Blaze 後執行 functions/DEPLOY.md |
+| ~~11~~ | ~~B6 Cloud Function 防刷分~~ | ✅ **v3.13.0 正式部署上線**，3 層防禦全部就緒 🛡️ |
 | **10b** | **B3-alt 量測後再決定**：先請 user 用 iPhone 玩大爆炸場景，看 console 有無 Slow tick | 0.5h 量測 | 數據導向決策 |
 | **11b** | **B6 部署**：升 Blaze + 設 Budget Alert + `firebase deploy --only functions:monkey` + 切 feature flag | 30 min | 啟用 server-side rate limit |
 | **12** | **C3 AI 電腦對手 (Gemini)** | 1 週 | 單人模式上線 |

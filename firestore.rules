@@ -56,7 +56,13 @@ service cloud.firestore {
 
     match /leaderboard/{entryId} {
       allow read: if true;
-      allow create: if isValidLeaderboardEntry(request.resource.data);
+
+      // ⚠️ Client write 已禁用（v3.13.0 起改走 Cloud Function monkey_submitScore）。
+      // Function 用 Admin SDK bypass rules，所以仍能寫入。
+      // 緊急回滾：若 Function 出問題，把下行改回 `if isValidLeaderboardEntry(request.resource.data)`
+      // 並把 GitHub Secret VITE_USE_CALLABLE_SUBMIT 設為 false 即可。
+      allow create: if false;
+
       allow update, delete: if false;
     }
 

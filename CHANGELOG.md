@@ -1,5 +1,68 @@
 # 📜 更新日誌 (CHANGELOG)
 
+## [3.13.0] - 2026-04-29
+
+### 🛡️ B6 Cloud Function 正式部署上線
+
+- ✅ Blaze 計費方案啟用（confirmed `billingEnabled: true`）
+- ✅ Cloud Functions v2 必要 IAM 角色加上：
+  - `roles/cloudbuild.builds.builder`
+  - `roles/artifactregistry.writer`
+  - `roles/storage.objectViewer`
+  - `roles/logging.logWriter`
+  - `roles/run.invoker`（給 allUsers，讓 Callable 可從瀏覽器呼叫）
+- ✅ `firebase deploy --only functions:monkey` 部署成功
+  - URL: `https://asia-east1-monkey-pixel-clash.cloudfunctions.net/monkey_submitScore`
+  - Region: asia-east1（Node 22, Gen 2, 256 MiB, maxInstances 10）
+  - 自動設 1 天 image cleanup policy（避免 storage 累積）
+- ✅ Firestore composite index 部署：`leaderboard.name ASC, timestamp ASC`（rate limit query 必要）
+- ✅ 端對端測試通過：
+  - Test 1: 合法提交 → `{ok: true}` 寫入 Firestore
+  - Test 2: 60s 內同名重送 → `RESOURCE_EXHAUSTED`（rate limit 起作用）
+  - Test 3: 名字格式不符 / 分數超範圍 → `INVALID_ARGUMENT`
+
+### 🔒 Firestore Rules 收緊（client write deny）
+
+- `match /leaderboard/{entryId}` 的 `allow create` 改為 **`if false`**
+- 前端**強制走 Cloud Function**，無法直寫 Firestore（即使 API key 洩漏也擋下來）
+- Function 用 Admin SDK bypass rules，server-side 寫入仍可
+
+### 🚀 前端切換到 Callable 路徑
+
+- `.env` 加 `VITE_USE_CALLABLE_SUBMIT="true"`
+- `.github/workflows/deploy.yml` 注入新 secret 給 Vite build
+- GitHub Secret `VITE_USE_CALLABLE_SUBMIT` 已 set 為 `true`
+
+### 📜 防刷分多層防禦完整圖（v3.13.0 終態）
+
+```
+玩家提交分數
+   ↓
+🥉 Layer 1: 前端 useScoreSubmission hook
+   ├─ Modal UI 驗證（年級/班級/座號三輸入必填）
+   └─ 10 秒 timeout 防卡死
+
+🥈 Layer 2: Cloud Function monkey_submitScore (NEW v3.13.0)
+   ├─ Schema 嚴格驗證（regex + 整數上限 9999）
+   ├─ Rate limit（同 name 60s 一次，composite index 撐起 query）
+   ├─ 可疑值 logging（>5000 自動記 IP）
+   └─ FieldValue.serverTimestamp() 強制注入
+
+🥇 Layer 3: Firestore Rules (client deny)
+   └─ allow create: if false
+      ↑ 即使 API key 洩漏，前端任何 addDoc 都被 403
+```
+
+### 🚦 v3.13.0 數字結算
+
+| 指標 | v3.12.0 | **v3.13.0** | 變化 |
+|---|---|---|---|
+| Cloud Function 狀態 | 程式碼就緒 | **ACTIVE** ✅ | 上線 |
+| Firestore Rules client write | 限制式允許 | **完全禁止** | ↑ |
+| 防刷分層數 | 2（Rules + 前端）| **3**（含 Function 中介）| +1 |
+| Composite indexes | 0 | 1（leaderboard）| +1 |
+| 月叫用估計 | — | < 12,000 / 200 萬 quota（166x 餘裕）| 🆓 |
+
 ## [3.12.0] - 2026-04-29
 
 ### 🛡️ B6 Cloud Function 防刷分（程式碼就緒，待 Blaze 升級）
