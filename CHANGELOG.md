@@ -1,5 +1,46 @@
 # 📜 更新日誌 (CHANGELOG)
 
+## [3.15.1] - 2026-04-29
+
+### 🎆 C4 第三波：主題化爆炸粒子（festive 煙火 + volcano 熔岩噴發）
+
+#### Theme 加 `explosionStyle` 可選欄位
+```ts
+explosionStyle?: {
+  palette: string[];                  // 隨機抽樣顏色池
+  pattern: 'radial' | 'fountain';     // 360° 散射 / 上噴
+  countMultiplier: number;             // 粒子數倍率
+  sparkle: boolean;                    // 是否加閃爍粒子
+}
+```
+
+#### 兩個主題設定
+| 主題 | pattern | palette | 倍率 |
+|---|---|---|---|
+| 🎄 festive | **radial**（360°）| 金 / 紅 / 紫 / 藍 / 綠 / 白（6 色彩虹）| 1.5x |
+| 🌋 volcano | **fountain**（往上）| 火紅 / 橘 / 黃 / 暗紅（4 色火系）| 1.3x |
+
+city / space / ocean / school 不設 `explosionStyle` → 維持 v3.15.0 原樣。
+
+#### 新模組 `src/game/engine/particles.ts`
+- `makeExplosionParticles(opts)` helper：取代 useGameLoop 內 inline 粒子生成
+- 支援 `ignoreThemeStyle` flag — **acid 強酸 / giant 巨大化道具仍保留特殊配色**（道具 > 主題優先級）
+- `calcVelocity(pattern, spread)` 切換 radial / fountain 速度模式
+
+#### useGameLoop 重構
+- monkey-hit 與 building-hit 共用 `makeExplosionParticles`
+- 移除約 50 行 inline 粒子生成程式
+- 移除未使用的 `ParticleType` import
+
+### 🚦 v3.15.1 數字結算
+
+| 指標 | v3.15.0 | **v3.15.1** | 變化 |
+|---|---|---|---|
+| Engine 模組 | 7 | **8** | +1（particles.ts）|
+| Theme 主題化深度 | bg + physics + buildings + trail | **+ explosion** | +1 維度 |
+| useGameLoop 行數 | ~700 | ~660 | -40 inline |
+| 單元測試 | 94 | **107** | +13 |
+
 ## [3.15.0] - 2026-04-29
 
 ### 🗺 C4 第二波：主題從 3 → 6 + bananaTrail 主題化

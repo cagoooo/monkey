@@ -67,6 +67,25 @@ export interface Theme {
     /** 線寬 */
     width: number;
   };
+
+  /**
+   * 命中爆炸的粒子風格（v3.15.1 新增 — C4 第三波）。
+   * 不設則使用預設 debris+sparkle 配色（與 v3.15.0 同行為）。
+   *
+   * 兩種預設 pattern：
+   *   - radial：360° 全方位放射（適合煙火）
+   *   - fountain：主要往上 + 微微外擴（適合岩漿噴發）
+   *
+   * palette 是粒子隨機抽樣顏色池；多色看起來像煙火。
+   */
+  explosionStyle?: {
+    palette: string[];
+    pattern: 'radial' | 'fountain';
+    /** 粒子數量倍率（1.0 = 維持預設）*/
+    countMultiplier: number;
+    /** 是否加額外閃爍粒子 */
+    sparkle: boolean;
+  };
 }
 
 export const THEMES: Record<ThemeId, Theme> = {
@@ -169,24 +188,30 @@ export const THEMES: Record<ThemeId, Theme> = {
     id: 'festive',
     label: '節慶煙火',
     emoji: '🎄',
-    description: '紅金漸層 + 飄雪，節慶氣氛',
+    description: '紅金漸層 + 飄雪 + 多彩煙火爆炸',
     background: [
       {kind: 'gradient', colors: ['#3a0d0d', '#1a0505']},
       {kind: 'snow'},
     ],
     physics: {
-      gravity: 0.22, // 略低（雪天感）
+      gravity: 0.22,
       airResistance: 1.0,
-      windRange: [-0.12, 0.12], // 風更大（雪花飄）
+      windRange: [-0.12, 0.12],
     },
     buildings: {
-      // 節慶配色：聖誕紅 / 金 / 雪白屋頂
       palette: ['#8B0000', '#B8860B', '#F5F5F5', '#228B22'],
       enabled: true,
     },
     bananaTrail: {
-      color: 'rgba(255, 215, 0, 0.6)', // 金色閃光
+      color: 'rgba(255, 215, 0, 0.6)',
       width: 2.5,
+    },
+    explosionStyle: {
+      // 多彩煙火配色：金 / 紅 / 紫 / 藍 / 綠 / 白
+      palette: ['#FFD700', '#FF4444', '#FF44FF', '#44AAFF', '#44FF44', '#FFFFFF'],
+      pattern: 'radial',     // 360° 全方位
+      countMultiplier: 1.5,  // 比預設多 50%
+      sparkle: true,
     },
   },
 
@@ -194,24 +219,30 @@ export const THEMES: Record<ThemeId, Theme> = {
     id: 'volcano',
     label: '火山熔岩',
     emoji: '🌋',
-    description: '紅橘漸層 + 飄落火星，岩漿戰場',
+    description: '紅橘漸層 + 火星 + 熔岩噴發爆炸',
     background: [
       {kind: 'gradient', colors: ['#5a1a0a', '#1a0505']},
       {kind: 'lavaSparks'},
     ],
     physics: {
-      gravity: 0.30, // 較重（熱浪壓迫感）
+      gravity: 0.30,
       airResistance: 1.0,
       windRange: [-0.06, 0.06],
     },
     buildings: {
-      // 火山岩 / 玄武岩 / 熔岩流
       palette: ['#3a2a2a', '#5a3a3a', '#8B4513', '#FF4500'],
       enabled: true,
     },
     bananaTrail: {
-      color: 'rgba(255, 100, 0, 0.55)', // 火橘
+      color: 'rgba(255, 100, 0, 0.55)',
       width: 2,
+    },
+    explosionStyle: {
+      // 熔岩配色：火紅 → 橘 → 黃 → 暗紅
+      palette: ['#FF2200', '#FF4500', '#FF8800', '#FFAA00', '#FFFF00', '#8B0000'],
+      pattern: 'fountain',   // 主要往上噴
+      countMultiplier: 1.3,
+      sparkle: true,
     },
   },
 };

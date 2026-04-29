@@ -115,6 +115,37 @@ describe('新主題物理參數', () => {
   });
 });
 
+describe('explosionStyle (v3.15.1 — C4 第三波)', () => {
+  it('city / space / ocean / school 沒設 explosionStyle（用預設）', () => {
+    expect(THEMES.city.explosionStyle).toBeUndefined();
+    expect(THEMES.space.explosionStyle).toBeUndefined();
+    expect(THEMES.ocean.explosionStyle).toBeUndefined();
+    expect(THEMES.school.explosionStyle).toBeUndefined();
+  });
+
+  it('festive 是 radial 多色煙火', () => {
+    const style = THEMES.festive.explosionStyle!;
+    expect(style.pattern).toBe('radial');
+    expect(style.palette.length).toBeGreaterThanOrEqual(5);
+    expect(style.sparkle).toBe(true);
+    expect(style.countMultiplier).toBeGreaterThanOrEqual(1.0);
+  });
+
+  it('volcano 是 fountain 熔岩噴發', () => {
+    const style = THEMES.volcano.explosionStyle!;
+    expect(style.pattern).toBe('fountain');
+    expect(style.palette.length).toBeGreaterThanOrEqual(4);
+    expect(style.sparkle).toBe(true);
+  });
+
+  it('volcano palette 全是紅橘黃系（每色至少含一個 R 高、B 低的字元組）', () => {
+    THEMES.volcano.explosionStyle!.palette.forEach(c => {
+      // 簡單檢查：紅橘色一定以 #F 或 #8B 開頭（R channel 高）
+      expect(c.toUpperCase()).toMatch(/^#(F[0-9A-F]|8B)/);
+    });
+  });
+});
+
 describe('新背景圖層 kinds', () => {
   it('festive 含 snow layer', () => {
     expect(THEMES.festive.background.some(l => l.kind === 'snow')).toBe(true);

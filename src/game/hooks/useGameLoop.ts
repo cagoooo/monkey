@@ -20,7 +20,7 @@
  */
 
 import {Dispatch, SetStateAction, useEffect, useRef} from 'react';
-import {GameState, Meteor, Particle, ParticleType} from '../types';
+import {GameState, Meteor, Particle} from '../types';
 import {CANVAS_WIDTH, CANVAS_HEIGHT, MONKEY_SIZE} from '../constants';
 import {soundService} from '../../services/soundService';
 import {getGroundY} from '../engine/terrain';
@@ -28,6 +28,7 @@ import {calculateScore} from '../engine/scoring';
 import {handleTurnTransition} from '../engine/turnTransition';
 import {getPowerUp} from '../engine/powerups';
 import {getTheme} from '../engine/themes';
+import {makeExplosionParticles} from '../engine/particles';
 
 const TICK_MS = 20;
 /** dev mode 下，tick 超過此 ms 數會 warn — 用於追蹤 iPhone 等舊裝置的掉幀 */
@@ -353,43 +354,11 @@ export function useGameLoop({status, setGameState, initGame}: UseGameLoopArgs) {
             newPoints[prev.currentPlayer - 1] += 100;
 
             const monkeySpec = getPowerUp(prev.banana?.type);
-            const newParticles: Particle[] = Array.from({length: monkeySpec.monkeyHit.particleCount}).flatMap(() => {
-              const base = {
-                id: Math.random(),
-                pos: {...newPos},
-                vel: {x: (Math.random() - 0.5) * 20, y: (Math.random() - 0.5) * 20},
-                life: 50 + Math.random() * 40,
-                maxLife: 90,
-                color: monkeySpec.monkeyHit.coreColor,
-                size: 2 + Math.random() * 6,
-                type: 'normal' as ParticleType,
-              };
-
-              const results: Particle[] = [base];
-
-              if (Math.random() > 0.6) {
-                results.push({
-                  ...base,
-                  id: Math.random(),
-                  color: 'rgba(100, 100, 100, 0.5)',
-                  type: 'smoke' as ParticleType,
-                  size: 10 + Math.random() * 10,
-                  vel: {x: (Math.random() - 0.5) * 5, y: (Math.random() - 0.5) * 5 - 2},
-                });
-              }
-
-              if (Math.random() > 0.8) {
-                results.push({
-                  ...base,
-                  id: Math.random(),
-                  color: '#FFFF00',
-                  type: 'spark' as ParticleType,
-                  size: 1 + Math.random() * 2,
-                  vel: {x: (Math.random() - 0.5) * 30, y: (Math.random() - 0.5) * 30},
-                });
-              }
-
-              return results;
+            const newParticles: Particle[] = makeExplosionParticles({
+              pos: newPos,
+              baseCount: monkeySpec.monkeyHit.particleCount,
+              fallbackColor: monkeySpec.monkeyHit.coreColor,
+              theme: getTheme(prev.themeId),
             });
 
             return {
@@ -417,55 +386,20 @@ export function useGameLoop({status, setGameState, initGame}: UseGameLoopArgs) {
 
               if (!inHole) {
                 const buildSpec = getPowerUp(prev.banana?.type);
-                const newParticles: Particle[] = Array.from({length: buildSpec.buildingHit.particleCount}).flatMap(
-                  () => {
-                    const isAcid = prev.banana?.type === 'acid';
-                    const isGiant = prev.banana?.type === 'giant';
-
-                    const base = {
-                      id: Math.random(),
-                      pos: {...newPos},
-                      vel: {
-                        x: (Math.random() - 0.5) * (isGiant ? 25 : 15),
-                        y: (Math.random() - 0.5) * (isGiant ? 25 : 15),
-                      },
-                      life: (isAcid ? 80 : 40) + Math.random() * 40,
-                      maxLife: isAcid ? 120 : 80,
-                      color: isAcid ? '#00FF00' : isGiant ? '#FFD700' : b.color,
-                      size: (isGiant ? 4 : 2) + Math.random() * 5,
-                      sparkle: isGiant && Math.random() > 0.5,
-                      type: 'normal' as ParticleType,
-                    };
-
-                    const results: Particle[] = [base];
-
-                    if (Math.random() > 0.4) {
-                      results.push({
-                        ...base,
-                        id: Math.random(),
-                        color: b.color,
-                        type: 'debris' as ParticleType,
-                        size: 3 + Math.random() * 5,
-                        rotation: Math.random() * Math.PI * 2,
-                        rotationVel: (Math.random() - 0.5) * 0.5,
-                        vel: {x: (Math.random() - 0.5) * 12, y: (Math.random() - 0.5) * 12 - 5},
-                      });
-                    }
-
-                    if (Math.random() > 0.6) {
-                      results.push({
-                        ...base,
-                        id: Math.random(),
-                        color: 'rgba(150, 150, 150, 0.4)',
-                        type: 'smoke' as ParticleType,
-                        size: 15 + Math.random() * 15,
-                        vel: {x: (Math.random() - 0.5) * 4, y: (Math.random() - 0.5) * 4 - 3},
-                      });
-                    }
-
-                    return results;
-                  }
-                );
+                const isSpecialAmmo = prev.banana?.type === 'acid' || prev.banana?.type === 'giant';
+                const ammoColor =
+                  prev.banana?.type === 'acid' ? '#00FF00' :
+                  prev.banana?.type === 'giant' ? '#FFD700' :
+                  b.color;
+                // 特殊道具（acid / giant）保留原本視覺辨識，否則用主題化粒子
+                const newParticles: Particle[] = makeExplosionParticles({
+                  pos: newPos,
+                  baseCount: buildSpec.buildingHit.particleCount,
+                  fallbackColor: ammoColor,
+                  debrisColor: b.color,
+                  theme: getTheme(prev.themeId),
+                  ignoreThemeStyle: isSpecialAmmo,
+                });
 
                 if (prev.banana.type === 'meteor') {
                   return {

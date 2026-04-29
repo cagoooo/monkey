@@ -1,7 +1,7 @@
 # 📈 專案開發進度表 (DEVELOPMENT_PROGRESS.md)
 
 > 最後更新：2026-04-29
-> 目前版本：**v3.15.0** ✅ 已部署上線（C4 第二波 🗺 + C5 sprite 輕量 🐵）
+> 目前版本：**v3.15.1** ✅ 已部署上線（C4 第三波 🎆 主題化爆炸粒子）
 
 ---
 
@@ -87,6 +87,15 @@
 - [x] 清掉 11 個 unused imports（lint warnings 21 → 11）
 - [x] Build 3.36s pass，typecheck pass
 
+### 🎆 Phase 16：v3.15.1 C4 第三波 主題化爆炸粒子（2026-04-29）✨
+- [x] **Theme 加 `explosionStyle` 可選欄位**（palette + pattern + countMultiplier + sparkle）
+- [x] festive：radial + 6 色彩虹煙火 + 1.5x 粒子數
+- [x] volcano：fountain + 4 色火系熔岩 + 1.3x 粒子數
+- [x] **新模組 `src/game/engine/particles.ts`**：`makeExplosionParticles` helper
+- [x] `ignoreThemeStyle` flag：acid / giant 道具特殊配色保留（道具 > 主題優先級）
+- [x] useGameLoop 重構：monkey-hit + building-hit 共用 helper（-40 行 inline）
+- [x] **新測試：particles.test.ts (10 tests) + themes 補 4 tests，總 94 → 107**
+
 ### 🎨 Phase 15：v3.15.0 C4 第二波 + C5 sprite 輕量版（2026-04-29）✨
 - [x] **3 個新主題**：🏫 校園 / 🎄 節慶 / 🌋 火山
 - [x] **bananaTrail 主題化**：每主題獨立配色與線寬（acid 仍保留綠色覆蓋）
@@ -154,7 +163,7 @@
 
 | 項目 | 狀態 |
 |---|---|
-| **版本** | `v3.15.0` ✅ |
+| **版本** | `v3.15.1` ✅ |
 | **正式站** | https://cagoooo.github.io/monkey/ |
 | **Firebase 專案** | `monkey-pixel-clash`（自有） |
 | **CI/CD** | GitHub Actions（Node 22 LTS） |
@@ -376,13 +385,14 @@ const POWERUPS: Record<string, PowerUp> = { giant: {...}, acid: {...} };
 3. **強化學習玩具**：TensorFlow.js 訓練猴子自學瞄準（純科普）
 **驗收**：簡單 / 普通 / 困難三難度，困難能用「橡皮彈反彈攻擊」。
 
-### C4. 多地圖 + 主題系統 ⭐⭐⭐⭐ ✅ **v3.15.0 完成（第一+二波）**
+### C4. 多地圖 + 主題系統 ⭐⭐⭐⭐ ✅ **v3.15.1 三波全部完成**
 - ✅ 6 主題：城市 / 太空 / 深海 / 校園 / 節慶 / 火山
 - ✅ themes.ts registry + StartScreen 選單（6 格）
 - ✅ Canvas 背景接 theme（gradient + 星 / 泡 / 雪 / 火星 4 種粒子層）
 - ✅ useGameLoop air resistance（深海漂浮）
 - ✅ bananaTrail 主題化（每主題獨立配色 + 線寬）
-- ⏳ 後續可加：火山觸發爆炸時換煙火粒子 / 節慶聖誕音效
+- ✅ **explosionStyle 主題化**（festive 煙火 / volcano 熔岩噴發；particles.ts helper）
+- ⏳ 後續可加：節慶聖誕音效 / 主題切換時 crossfade 動畫
 
 ### C5. Sprite 動畫系統 ⭐⭐⭐ 🟡 **v3.15.0 輕量版完成**
 - ✅ idle 呼吸（sin bob）
