@@ -16,6 +16,7 @@ import { soundService } from './services/soundService';
 import { PortraitHint } from './game/components/PortraitHint';
 import { StartScreen } from './game/components/StartScreen';
 import { WinnerScreen } from './game/components/WinnerScreen';
+import { drawMonkey as renderMonkey, derivePose } from './game/components/MonkeyRenderer';
 import { useLeaderboard } from './game/hooks/useLeaderboard';
 import { useViewportHeight } from './game/hooks/useViewportHeight';
 import { useFullscreen } from './game/hooks/useFullscreen';
@@ -1016,232 +1017,7 @@ export default function App() {
       }
     }
 
-    // Draw Monkeys
-    const drawMonkey = (pos: Point, color: string, isThrowing: boolean, isPlayer1: boolean, isWinner: boolean, isDead: boolean, isActive: boolean, hasUmbrella: boolean = false, groundTurns: number = 0, isStruggling: boolean = false) => {
-      if (isActive && !isDead) {
-        ctx.save();
-        const bounce = Math.sin(Date.now() / 150) * 5;
-        ctx.fillStyle = '#FFD700'; // Gold
-        ctx.shadowBlur = 10;
-        ctx.shadowColor = '#FFD700';
-        
-        // Draw inverted triangle above head
-        ctx.beginPath();
-        ctx.moveTo(pos.x - 6, pos.y - 45 + bounce);
-        ctx.lineTo(pos.x + 6, pos.y - 45 + bounce);
-        ctx.lineTo(pos.x, pos.y - 35 + bounce);
-        ctx.closePath();
-        ctx.fill();
-        ctx.restore();
-      }
-
-      // Countdown display
-      if (groundTurns > 0 && !isDead && !isWinner) {
-        ctx.save();
-        ctx.translate(pos.x, pos.y);
-        ctx.fillStyle = groundTurns >= 4 ? '#FF0000' : '#FFFFFF';
-        ctx.font = 'bold 24px Arial';
-        ctx.textAlign = 'center';
-        ctx.shadowBlur = 5;
-        ctx.shadowColor = '#000000';
-        ctx.fillText(`${5 - groundTurns}`, 0, -60);
-        ctx.restore();
-      }
-
-      ctx.save();
-      
-      // Struggle animation (shaking)
-      let shakeX = 0;
-      let shakeY = 0;
-      if (isStruggling) {
-        shakeX = (Math.random() - 0.5) * 8;
-        shakeY = (Math.random() - 0.5) * 8;
-      }
-      
-      // C5 Sprite 動畫：idle 呼吸（沒在投擲、沒贏、沒死、沒掙扎時，輕微上下浮動）
-      const isIdle = !isThrowing && !isWinner && !isDead && !isStruggling;
-      const idleBob = isIdle ? Math.sin(Date.now() / 600) * 0.8 : 0;
-
-      ctx.translate(pos.x + shakeX, pos.y + shakeY + idleBob);
-
-      if (isDead) {
-        ctx.rotate(isPlayer1 ? -Math.PI / 2 : Math.PI / 2);
-        ctx.translate(0, 10);
-      }
-
-      // Refined Gorilla Drawing
-      const p = 2.5;
-      const furColor = color; // Main fur color
-      const faceColor = '#FFCC99'; // Lighter face/chest color
-      const shadowColor = 'rgba(0,0,0,0.2)';
-      const highlightColor = 'rgba(255,255,255,0.2)';
-
-      // 1. Ears
-      ctx.fillStyle = furColor;
-      ctx.fillRect(-3.5 * p, -9.5 * p, 1.5 * p, 2 * p); // Left ear
-      ctx.fillRect(2 * p, -9.5 * p, 1.5 * p, 2 * p);  // Right ear
-
-      // 2. Head
-      ctx.fillStyle = furColor;
-      ctx.fillRect(-2.5 * p, -10.5 * p, 5 * p, 4.5 * p); // Main head shape
-
-      // 3. Face Mask
-      ctx.fillStyle = faceColor;
-      ctx.fillRect(-1.5 * p, -8.5 * p, 3 * p, 2.5 * p); // Face area
-
-      // 4. Eyes — C5 加入眨眼（每 ~3 秒短暫閉眼 0.2 秒）
-      ctx.fillStyle = '#000';
-      const blinkCycle = (Date.now() / 1000) % 3;
-      const isBlinking = !isDead && blinkCycle < 0.2;
-      const eyeHeight = isBlinking ? 0.15 * p : 0.8 * p;
-      const eyeY = isBlinking ? -7.0 * p : -7.5 * p;
-      ctx.fillRect(-1 * p, eyeY, 0.8 * p, eyeHeight); // Left eye
-      ctx.fillRect(0.2 * p, eyeY, 0.8 * p, eyeHeight); // Right eye
-      
-      // 5. Body
-      ctx.fillStyle = furColor;
-      ctx.fillRect(-4 * p, -6 * p, 8 * p, 6 * p); // Main torso
-      
-      // 6. Chest Patch
-      ctx.fillStyle = faceColor;
-      ctx.fillRect(-2.5 * p, -5 * p, 5 * p, 4 * p); // Chest area
-      
-      // 7. Arms
-      ctx.fillStyle = furColor;
-      if (isWinner) {
-        const beat = Math.sin(Date.now() / 150) > 0;
-        if (beat) {
-          // Arms up (Victory)
-          ctx.fillRect(-6 * p, -11 * p, 2.5 * p, 6 * p); // Left arm up
-          ctx.fillRect(3.5 * p, -11 * p, 2.5 * p, 6 * p);  // Right arm up
-          // Hands
-          ctx.fillStyle = faceColor;
-          ctx.fillRect(-6 * p, -12 * p, 2.5 * p, 1.5 * p);
-          ctx.fillRect(3.5 * p, -12 * p, 2.5 * p, 1.5 * p);
-        } else {
-          // Arms down/bent
-          ctx.fillRect(-7 * p, -7 * p, 3.5 * p, 3 * p); // Left shoulder
-          ctx.fillRect(3.5 * p, -7 * p, 3.5 * p, 3 * p);  // Right shoulder
-          ctx.fillRect(-7 * p, -4 * p, 2 * p, 5 * p); // Left arm down
-          ctx.fillRect(5 * p, -4 * p, 2 * p, 5 * p);  // Right arm down
-          // Hands
-          ctx.fillStyle = faceColor;
-          ctx.fillRect(-7 * p, 1 * p, 2 * p, 1.5 * p);
-          ctx.fillRect(5 * p, 1 * p, 2 * p, 1.5 * p);
-        }
-      } else if (isThrowing) {
-        const elapsed = Date.now() - (gameState.throwStartTime || 0);
-        const armUp = elapsed < 400;
-        if (isPlayer1) {
-          // Player 1 throwing (Left arm up)
-          if (armUp) {
-            ctx.fillRect(-6 * p, -12 * p, 2.5 * p, 7 * p);
-            ctx.fillStyle = faceColor;
-            ctx.fillRect(-6 * p, -13 * p, 2.5 * p, 1.5 * p);
-            ctx.fillStyle = furColor;
-          } else {
-            ctx.fillRect(-7 * p, -7 * p, 3.5 * p, 4 * p);
-          }
-          
-          // Right arm on hip
-          ctx.fillRect(4 * p, -7 * p, 3 * p, 3 * p);
-          ctx.fillRect(5 * p, -4 * p, 2 * p, 4 * p);
-          ctx.fillStyle = faceColor;
-          ctx.fillRect(3.5 * p, -1 * p, 2 * p, 1.5 * p);
-        } else {
-          // Player 2 throwing (Right arm up)
-          if (armUp) {
-            ctx.fillRect(3.5 * p, -12 * p, 2.5 * p, 7 * p);
-            ctx.fillStyle = faceColor;
-            ctx.fillRect(3.5 * p, -13 * p, 2.5 * p, 1.5 * p);
-            ctx.fillStyle = furColor;
-          } else {
-            ctx.fillRect(3.5 * p, -7 * p, 3.5 * p, 4 * p);
-          }
-          
-          // Left arm on hip
-          ctx.fillRect(-7 * p, -7 * p, 3 * p, 3 * p);
-          ctx.fillRect(-7 * p, -4 * p, 2 * p, 4 * p);
-          ctx.fillStyle = faceColor;
-          ctx.fillRect(-5.5 * p, -1 * p, 2 * p, 1.5 * p);
-        }
-      } else {
-        // Hands on hips
-        // Left arm
-        ctx.fillRect(-7 * p, -7 * p, 3.5 * p, 3 * p); // Shoulder
-        ctx.fillRect(-7 * p, -4 * p, 2 * p, 4 * p); // Arm down
-        ctx.fillStyle = faceColor;
-        ctx.fillRect(-5.5 * p, -1 * p, 2 * p, 1.5 * p); // Hand
-        
-        // Right arm
-        ctx.fillStyle = furColor;
-        ctx.fillRect(3.5 * p, -7 * p, 3.5 * p, 3 * p); // Shoulder
-        ctx.fillRect(5 * p, -4 * p, 2 * p, 4 * p); // Arm down
-        ctx.fillStyle = faceColor;
-        ctx.fillRect(3.5 * p, -1 * p, 2 * p, 1.5 * p); // Hand
-      }
-      
-      // 8. Legs
-      ctx.fillStyle = furColor;
-      ctx.fillRect(-3.5 * p, 0 * p, 2.5 * p, 4 * p); // Left leg
-      ctx.fillRect(1 * p, 0 * p, 2.5 * p, 4 * p);  // Right leg
-      
-      // 9. Feet
-      ctx.fillStyle = faceColor;
-      ctx.fillRect(-4.5 * p, 4 * p, 3.5 * p, 1.5 * p); // Left foot
-      ctx.fillRect(1 * p, 4 * p, 3.5 * p, 1.5 * p);  // Right foot
-
-      // 10. Shading/Highlights (Subtle)
-      ctx.fillStyle = highlightColor;
-      ctx.fillRect(-2 * p, -10 * p, 1 * p, 1 * p); // Head highlight
-      ctx.fillRect(-3.5 * p, -5.5 * p, 1 * p, 1 * p); // Shoulder highlight
-      
-      ctx.fillStyle = shadowColor;
-      ctx.fillRect(-3.5 * p, -1 * p, 2.5 * p, 0.5 * p); // Leg shadow
-      ctx.fillRect(1 * p, -1 * p, 2.5 * p, 0.5 * p);  // Leg shadow
-
-      // 11. Umbrella (if protected during meteor shower)
-      if (hasUmbrella) {
-        ctx.save();
-        ctx.translate(0, -15 * p); // Move above head
-        
-        // Handle
-        ctx.strokeStyle = '#8B4513';
-        ctx.lineWidth = 3;
-        ctx.beginPath();
-        ctx.moveTo(0, 0);
-        ctx.lineTo(0, -25);
-        ctx.stroke();
-        
-        // Canopy
-        const umbrellaColor = '#FF4444';
-        ctx.fillStyle = umbrellaColor;
-        ctx.beginPath();
-        ctx.arc(0, -25, 40, Math.PI, 0);
-        ctx.fill();
-        
-        // Ribs/Details
-        ctx.strokeStyle = 'rgba(255,255,255,0.3)';
-        ctx.lineWidth = 2;
-        for (let i = 1; i < 4; i++) {
-          ctx.beginPath();
-          ctx.moveTo(0, -25);
-          const angle = Math.PI + (i * Math.PI) / 4;
-          ctx.lineTo(Math.cos(angle) * 40, -25 + Math.sin(angle) * 40);
-          ctx.stroke();
-        }
-        
-        // Top point
-        ctx.fillStyle = '#FFD700';
-        ctx.beginPath();
-        ctx.arc(0, -65, 4, 0, Math.PI * 2);
-        ctx.fill();
-        
-        ctx.restore();
-      }
-
-      ctx.restore();
-    };
+    // Draw Monkeys（v3.16.0：drawMonkey 200 行 inline 已搬到 src/game/components/MonkeyRenderer.ts）
 
     const p1Throwing = gameState.status === 'throwing' && gameState.currentPlayer === 1;
     const p2Throwing = gameState.status === 'throwing' && gameState.currentPlayer === 2;
@@ -1255,8 +1031,29 @@ export default function App() {
     const p1HasUmbrella = gameState.status === 'meteorShower' && gameState.meteorShower?.protectedPlayer === 1;
     const p2HasUmbrella = gameState.status === 'meteorShower' && gameState.meteorShower?.protectedPlayer === 2;
 
-    drawMonkey(gameState.player1Pos, '#FFB84D', p1Throwing, true, p1Winner, p1Dead, p1Active, p1HasUmbrella, gameState.p1GroundTurns, gameState.p1Struggling);
-    drawMonkey(gameState.player2Pos, '#FFB84D', p2Throwing, false, p2Winner, p2Dead, p2Active, p2HasUmbrella, gameState.p2GroundTurns, gameState.p2Struggling);
+    // C5 完整版：用 MonkeyRenderer 狀態機（取代原 200 行 inline drawMonkey）
+    renderMonkey(ctx, gameState.player1Pos, '#FFB84D', {
+      pose: derivePose({
+        isThrowing: p1Throwing, isWinner: p1Winner, isDead: p1Dead,
+        isStruggling: gameState.p1Struggling, isActive: p1Active,
+      }),
+      isPlayer1: true,
+      isActive: p1Active,
+      hasUmbrella: p1HasUmbrella,
+      groundTurns: gameState.p1GroundTurns,
+      throwStartTime: gameState.throwStartTime,
+    });
+    renderMonkey(ctx, gameState.player2Pos, '#FFB84D', {
+      pose: derivePose({
+        isThrowing: p2Throwing, isWinner: p2Winner, isDead: p2Dead,
+        isStruggling: gameState.p2Struggling, isActive: p2Active,
+      }),
+      isPlayer1: false,
+      isActive: p2Active,
+      hasUmbrella: p2HasUmbrella,
+      groundTurns: gameState.p2GroundTurns,
+      throwStartTime: gameState.throwStartTime,
+    });
 
     // Draw Banana
     if (gameState.banana) {

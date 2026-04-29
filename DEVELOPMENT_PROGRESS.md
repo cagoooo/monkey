@@ -1,7 +1,7 @@
 # 📈 專案開發進度表 (DEVELOPMENT_PROGRESS.md)
 
 > 最後更新：2026-04-29
-> 目前版本：**v3.15.1** ✅ 已部署上線（C4 第三波 🎆 主題化爆炸粒子）
+> 目前版本：**v3.16.0** ✅ 已部署上線（**C5 完整版** 🎨 sprite-ready 架構）
 
 ---
 
@@ -87,6 +87,21 @@
 - [x] 清掉 11 個 unused imports（lint warnings 21 → 11）
 - [x] Build 3.36s pass，typecheck pass
 
+### 🎨 Phase 17：v3.16.0 C5 完整版 sprite-ready 架構（2026-04-29）✨
+- [x] 新模組 `src/game/components/MonkeyRenderer.ts`（350 行狀態機）
+- [x] **MonkeyPose enum**：6 個狀態（idle/aiming/throwing/celebrating/dead/struggling）
+- [x] **derivePose helper**：把 5 個 boolean 旗標轉 enum，優先級鎖死
+- [x] 子函式拆分：drawHead / drawBody / drawArmsForPose 等
+- [x] **Throw 3 階段動畫**：windup → release → follow（每階段 200ms）
+- [x] App.tsx 移除 inline drawMonkey 200 行
+- [x] **App.tsx 1700 → 1499 行（-201 = -12%）**
+- [x] 新測試 MonkeyRenderer.test.ts（6 tests，總 107 → 113）
+- [x] [docs/SPRITES-SETUP.md](docs/SPRITES-SETUP.md) 完整 SOP（未來換 Kenney PNG 步驟）
+
+### 🐛 Phase 16.5：v3.15.2 hotfix（2026-04-29）✨
+- [x] StartScreen RWD 修復：標題不再被推出可視區（justify-start）
+- [x] AudioContext async unlock：await ctx.resume() 才 playIntro，0 警告
+
 ### 🎆 Phase 16：v3.15.1 C4 第三波 主題化爆炸粒子（2026-04-29）✨
 - [x] **Theme 加 `explosionStyle` 可選欄位**（palette + pattern + countMultiplier + sparkle）
 - [x] festive：radial + 6 色彩虹煙火 + 1.5x 粒子數
@@ -163,7 +178,7 @@
 
 | 項目 | 狀態 |
 |---|---|
-| **版本** | `v3.15.1` ✅ |
+| **版本** | `v3.16.0` ✅ |
 | **正式站** | https://cagoooo.github.io/monkey/ |
 | **Firebase 專案** | `monkey-pixel-clash`（自有） |
 | **CI/CD** | GitHub Actions（Node 22 LTS） |
@@ -394,10 +409,14 @@ const POWERUPS: Record<string, PowerUp> = { giant: {...}, acid: {...} };
 - ✅ **explosionStyle 主題化**（festive 煙火 / volcano 熔岩噴發；particles.ts helper）
 - ⏳ 後續可加：節慶聖誕音效 / 主題切換時 crossfade 動畫
 
-### C5. Sprite 動畫系統 ⭐⭐⭐ 🟡 **v3.15.0 輕量版完成**
+### C5. Sprite 動畫系統 ⭐⭐⭐ ✅ **v3.16.0 完整版完成（架構級）**
 - ✅ idle 呼吸（sin bob）
 - ✅ 眨眼動畫（~3s 一次）
-- ⏳ 後續可加：完整 Kenney sprite sheet（投擲蓄力 / 受傷 / 思考）/ 嘴形動畫
+- ✅ MonkeyRenderer 狀態機 + 子函式拆分
+- ✅ Throw 3 階段動畫（windup / release / follow）
+- ✅ Sprite-ready 架構（換 PNG 只要改子函式）
+- ✅ docs/SPRITES-SETUP.md 完整 SOP
+- ⏳ 真換 Kenney PNG 留給有美術需求時做（預估 2 個工作天，見 SOP）
 **素材**：Kenney.nl 大量 CC0 免費像素風 sprite
 **技術**：Canvas `drawImage` 切幀（比 SVG path 快很多）
 **驗收**：猴子有「投擲、歡呼、受傷、待機」4 種狀態 sprite

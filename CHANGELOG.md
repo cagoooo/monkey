@@ -1,5 +1,63 @@
 # 📜 更新日誌 (CHANGELOG)
 
+## [3.16.0] - 2026-04-29
+
+### 🎨 C5 完整版：MonkeyRenderer sprite-ready 架構
+
+把 200 行 inline 在 App.tsx 的 `drawMonkey` 重構為**狀態機 + 命名動畫幀**。
+
+#### 新模組 `src/game/components/MonkeyRenderer.ts`（350 行）
+- **MonkeyPose enum**：`idle / aiming / throwing / celebrating / dead / struggling`
+- **MonkeyDrawState interface**：明確 props（pose / isPlayer1 / isActive / hasUmbrella / groundTurns / throwStartTime）
+- **`derivePose()` helper**：把 GameState 的 5 個 boolean 旗標轉成單一 enum，優先級鎖死
+  ```
+  dead > celebrating > throwing > struggling > aiming > idle
+  ```
+- 子函式拆分（每個 < 30 行）：
+  - `drawHead` — 頭 + 耳 + 眼（含眨眼動畫）
+  - `drawBody` — 軀幹 + 胸肌
+  - `drawArmsForPose` — switch case 分發 4 種手臂
+    - `drawCelebrateArms` — 雙幀 victory beat
+    - `drawThrowArms` — **3 階段動畫**（windup → release → follow，每階段 200ms）
+    - `drawIdleArms` — 雙手叉腰
+  - `drawLegs` / `drawFinishingTouches` / `drawUmbrella` — 共用部位
+
+#### Throw 動畫升級（v3.16.0 新增）
+原本 throw 只有「手舉/手放」二態。現在 3 階段：
+| 時間 | 階段 | 視覺 |
+|---|---|---|
+| 0–200ms | **windup** | 手臂後拉蓄力（往身後+略下） |
+| 200–400ms | **release** | 手臂高舉至最高點（最大力道瞬間） |
+| 400ms+ | **follow** | 手臂垂下完成動作 |
+
+#### Sprite-ready 架構（為未來 Kenney PNG 鋪路）
+所有狀態切換邏輯封裝在 enum + manifest 結構，未來換 PNG sprite sheet 只要：
+1. 把 `drawHead` / `drawBody` 等子函式內的 `ctx.fillRect` 換成 `ctx.drawImage(sheet, sx, sy, ...)`
+2. 加 spriteManifest.ts 定義各 frame 座標
+3. feature flag `VITE_USE_SPRITE_PNG` 漸進切換
+
+**完整 SOP** 寫在 [docs/SPRITES-SETUP.md](docs/SPRITES-SETUP.md)（含 Kenney 來源、像素對齊、動畫時序、預估工時）。
+
+#### App.tsx 變化
+- 移除 inline `drawMonkey` 函式（225 行）
+- 接入 `renderMonkey` + `derivePose` 呼叫（每 monkey 11 行）
+- **App.tsx 1700 → 1499 行（淨削減 201 行 / 12%）**
+
+#### 測試
+- 新增 `MonkeyRenderer.test.ts`（6 tests）驗證 derivePose 優先級正確
+- **總測試 107 → 113**（+6），全綠 400ms
+
+### 🚦 v3.16.0 數字結算
+
+| 指標 | v3.15.2 | **v3.16.0** | 變化 |
+|---|---|---|---|
+| App.tsx 行數 | 1700 | **1499** | **-201 (-12%)** |
+| Component 模組 | 6 | **7**（+ MonkeyRenderer）| +1 |
+| Throw 動畫階段 | 2（armUp/down）| **3**（windup/release/follow）| +1 |
+| 單元測試 | 107 | **113** | +6 |
+| Sprite-ready 架構 | ❌ | ✅ | new |
+| Kenney PNG 切換 SOP | ❌ | docs/SPRITES-SETUP.md | new |
+
 ## [3.15.2] - 2026-04-29 (hotfix)
 
 ### 🐛 修復：StartScreen 標題在 RWD 下被推出可視區外
