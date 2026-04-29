@@ -46,14 +46,22 @@ export function StartScreen({
       initial={{opacity: 0}}
       animate={{opacity: 1}}
       exit={{opacity: 0}}
-      className="absolute inset-0 bg-[#0000AA] z-50 flex flex-col items-center justify-start md:justify-center p-4 md:p-8 overflow-y-auto"
+      // RWD 修正：永遠 justify-start（從上往下排），避免 md:justify-center
+      // 在 6 主題版面變大時把標題推出可視區外。
+      // overflow-y-auto 讓內容可捲動但永遠從頂部開始。
+      className="absolute inset-0 bg-[#0000AA] z-50 flex flex-col items-center justify-start p-4 md:p-6 overflow-y-auto"
     >
-      <div className="relative mb-4 md:mb-12 mt-4 md:mt-0">
+      {/*
+        標題容器：用 flex-shrink-0 防止內容多時被擠扁。
+        BananaOrbit 用 absolute 定位，不影響標題佔的高度。
+        手機 text-5xl ≈ 48px，桌面 text-7xl ≈ 72px（從 9xl 縮小避免太佔版面）。
+      */}
+      <div className="relative flex-shrink-0 mb-4 md:mb-8 mt-2 md:mt-4 w-full max-w-2xl flex justify-center items-center" style={{minHeight: '5rem'}}>
         <BananaOrbit />
         <motion.h1
           initial={{y: -50, scale: 0.5}}
           animate={{y: 0, scale: 1}}
-          className="text-5xl md:text-9xl font-bold text-yellow-400 drop-shadow-[0_4px_0_rgba(0,0,0,1)] md:drop-shadow-[0_8px_0_rgba(0,0,0,1)] text-center relative z-10"
+          className="text-5xl md:text-7xl font-bold text-yellow-400 drop-shadow-[0_4px_0_rgba(0,0,0,1)] md:drop-shadow-[0_6px_0_rgba(0,0,0,1)] text-center relative z-10"
         >
           猴子丟香蕉
         </motion.h1>
@@ -125,7 +133,8 @@ export function StartScreen({
         </div>
       </div>
 
-      <div className="mt-auto w-full flex flex-col items-center gap-2 md:gap-4 pb-8 md:pb-0">
+      {/* 底部設定區：移除 mt-auto（justify-start 模式下會把它推到容器頂部 push out content）*/}
+      <div className="w-full flex flex-col items-center gap-3 md:gap-4 pb-12 md:pb-16 mt-2">
         <div className="flex flex-col items-center gap-1 md:gap-2">
           <label className="text-[10px] md:text-sm uppercase opacity-70">重力值設定</label>
           <div className="flex items-center gap-2 md:gap-3">
@@ -143,15 +152,17 @@ export function StartScreen({
 
         <button
           onClick={onToggleFullscreen}
-          className="retro-button text-xs md:text-sm px-4 md:px-6 py-2 mt-2 md:mt-4"
+          className="retro-button text-xs md:text-sm px-4 md:px-6 py-2"
         >
           {isFullscreen ? '退出全螢幕' : '全螢幕'}
         </button>
-      </div>
 
-      <div className="absolute bottom-4 right-4 text-xs opacity-50 text-right">
-        <div>ＡＮＴＹＥＨ修正</div>
-        <div className="text-[10px] mt-1">v1.3.0</div>
+        {/* 版本號 inline 在底部，不再 absolute 重疊 */}
+        <div className="text-[10px] opacity-40 text-center pt-2">
+          <span>ＡＮＴＹＥＨ修正</span>
+          <span className="mx-2">·</span>
+          <span>v1.3.0</span>
+        </div>
       </div>
     </motion.div>
   );

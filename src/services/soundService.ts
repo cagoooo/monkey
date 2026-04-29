@@ -28,13 +28,22 @@ class SoundService {
    * 註冊方式：在 main.tsx 全域 listener，第一次 pointerdown / keydown / touchstart
    * 就呼叫 unlock()，之後音訊任何時候播都正常。
    */
-  unlock() {
+  /**
+   * Async 確保 ctx.resume() 完成才視為 unlocked。
+   * 否則 resume() 是 Promise，呼叫端如果立刻 playIntro 會在 ctx 還
+   * suspended 時 schedule oscillators，每個都觸發 console 警告。
+   */
+  async unlock(): Promise<void> {
     if (this.unlocked) return;
     if (!this.ctx) {
       this.ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
     }
     if (this.ctx.state === 'suspended') {
-      this.ctx.resume();
+      try {
+        await this.ctx.resume();
+      } catch {
+        // resume 失敗（罕見）— 仍把 unlocked 設 true，後續 play 會早退避免警告
+      }
     }
     this.unlocked = true;
   }

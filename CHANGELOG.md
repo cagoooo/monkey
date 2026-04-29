@@ -1,5 +1,33 @@
 # 📜 更新日誌 (CHANGELOG)
 
+## [3.15.2] - 2026-04-29 (hotfix)
+
+### 🐛 修復：StartScreen 標題在 RWD 下被推出可視區外
+
+**症狀**：v3.15.x 加入 6 主題選單後，StartScreen 內容變多，桌面 / 手機都看不到頂部「猴子丟香蕉」大標題。
+
+**根因**：`md:justify-center` 把 flex content 在內容超過 viewport 時垂直置中，加上 `overflow-y-auto` → 滾動位置卡在內容中段，標題被推出可視區。
+
+**修法**：
+- 永遠 `justify-start`（從上往下排），讓 overflow 自然從頂部開始
+- 標題容器改用 `flex-shrink-0` + 明確 `minHeight`，防止被擠扁
+- 桌面標題從 `text-9xl` (128px) 縮成 `text-7xl` (72px)，讓多主題版面更平衡
+- 移除 `mt-auto`（在 justify-start 模式下會誤推內容）
+- 「ＡＮＴＹＥＨ修正 v1.3.0」改 inline 顯示，不再 `absolute` 重疊重力設定
+
+### 🐛 修復：AudioContext 警告又出現（部署版觀察到 12 次）
+
+**根因**：`soundService.unlock()` 是同步函式，但 `ctx.resume()` 是 Promise。
+unlock 回傳後立刻呼叫 `playIntro()`，此時 ctx 可能仍 suspended，
+每個 oscillator schedule 都觸發 Chrome 警告。
+
+**修法**：
+- `unlock()` 改為 `async`，內部 `await this.ctx.resume()`
+- `main.tsx` 全域 listener 改 async，先 await unlock 才 playIntro
+- `App.tsx` `handleStartGame` 改 async，先 await unlock 才 initGame
+
+效果：unlock 完成（ctx state 真的進入 'running'）後才播音，console 0 警告。
+
 ## [3.15.1] - 2026-04-29
 
 ### 🎆 C4 第三波：主題化爆炸粒子（festive 煙火 + volcano 熔岩噴發）

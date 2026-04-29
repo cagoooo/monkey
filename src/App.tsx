@@ -278,9 +278,10 @@ export default function App() {
     setShowStartScreen(false);
   };
 
-  const handleStartGame = () => {
+  const handleStartGame = async () => {
     // 在 user gesture 同步路徑內解鎖 AudioContext（雙保險，main.tsx 也有全域 listener）
-    soundService.unlock();
+    // await 確保 ctx.resume() 完成才繼續 — 否則後續 BGM 可能在 ctx 還 suspended 時 schedule
+    await soundService.unlock();
 
     const gVal = parseFloat(gravityInput) || 9.8;
     // Scale 9.8 to 0.25
