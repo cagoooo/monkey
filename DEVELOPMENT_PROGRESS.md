@@ -1,7 +1,7 @@
 # 📈 專案開發進度表 (DEVELOPMENT_PROGRESS.md)
 
 > 最後更新：2026-04-29
-> 目前版本：**v3.13.0** ✅ 已部署上線（**B6 Function 正式上線** 🛡️）
+> 目前版本：**v3.14.0** ✅ 已部署上線（**C4 多地圖主題系統** 🗺）
 
 ---
 
@@ -87,6 +87,16 @@
 - [x] 清掉 11 個 unused imports（lint warnings 21 → 11）
 - [x] Build 3.36s pass，typecheck pass
 
+### 🗺 Phase 14：v3.14.0 C4 多地圖主題系統（2026-04-29）✨
+- [x] **`src/game/engine/themes.ts`** registry（city / space / ocean）
+- [x] `GameState.themeId` type-level 鎖定 3 個可選值
+- [x] **`StartScreen` 新增 3 格主題選按鈕**（emoji + 黃框 ring 標示選中）
+- [x] App.tsx initGame 接 theme：building palette / 預設 gravity / wind range
+- [x] Canvas 重寫背景：solid / gradient + 星星閃爍（80 顆）+ 氣泡上升（25 顆）
+- [x] **useGameLoop banana flying 套用 `theme.physics.airResistance`**（深海漂浮效果）
+- [x] `themes.test.ts` 13 tests（schema / 物理合理性 / fallback）
+- [x] **總測試 72 → 85**
+
 ### 🛡️ Phase 13：v3.13.0 B6 Cloud Function 正式部署上線（2026-04-29）✨
 - [x] Blaze 計費啟用 + 5 個 Cloud Functions v2 必要 IAM 角色加好
 - [x] `firebase deploy --only functions:monkey` 成功（asia-east1, Node 22, Gen 2）
@@ -136,7 +146,7 @@
 
 | 項目 | 狀態 |
 |---|---|
-| **版本** | `v3.13.0` ✅ |
+| **版本** | `v3.14.0` ✅ |
 | **正式站** | https://cagoooo.github.io/monkey/ |
 | **Firebase 專案** | `monkey-pixel-clash`（自有） |
 | **CI/CD** | GitHub Actions（Node 22 LTS） |
@@ -358,15 +368,13 @@ const POWERUPS: Record<string, PowerUp> = { giant: {...}, acid: {...} };
 3. **強化學習玩具**：TensorFlow.js 訓練猴子自學瞄準（純科普）
 **驗收**：簡單 / 普通 / 困難三難度，困難能用「橡皮彈反彈攻擊」。
 
-### C4. 多地圖 + 主題系統 ⭐⭐⭐⭐
-- **太空**：低重力 + 流星背景 + 香蕉飛超遠
-- **深海**：高阻力 + 氣泡特效 + 香蕉漂浮感
-- **校園**：建築換成教學樓 / 操場
-- **節慶**：聖誕雪花 / 春節鞭炮（爆炸換煙火粒子）
-**做法**：地圖設定變 JSON（B1 拆完更好做）
-```json
-{ "id": "space", "gravity": 0.1, "wind": [-0.5, 0.5], "bgLayers": ["stars"], "bananaTrail": "glow" }
-```
+### C4. 多地圖 + 主題系統 ⭐⭐⭐⭐ ✅ **v3.14.0 第一波完成**
+- ✅ 城市 / 太空 / 深海 三主題
+- ✅ themes.ts registry pattern + StartScreen 選單
+- ✅ Canvas 背景接 theme（gradient + 星星閃爍 + 氣泡上升）
+- ✅ useGameLoop air resistance
+- ⏳ 後續可加：校園（教學樓）/ 節慶（聖誕雪花、春節鞭炮）/ 火山 / 城市夜景
+- ⏳ 後續可加：bananaTrail 主題化（太空閃光 / 深海泡沫）
 
 ### C5. Sprite 動畫系統 ⭐⭐⭐
 **素材**：Kenney.nl 大量 CC0 免費像素風 sprite

@@ -1,5 +1,44 @@
 # 📜 更新日誌 (CHANGELOG)
 
+## [3.14.0] - 2026-04-29
+
+### 🗺 C4 多地圖主題系統（第一波）
+
+#### 新增 3 個主題
+| Emoji | 主題 | 物理 | 視覺 |
+|---|---|---|---|
+| 🏙 | **城市天際線** | 重力 0.25 / 無阻力 / 風 ±0.1 | 經典藍底 + 灰青紅建築 |
+| 🚀 | **外太空** | 重力 0.10（地球 40%）/ 無阻力 / 風 ±0.05 | 紫黑漸層 + 80 顆閃爍星星 |
+| 🌊 | **深海戰場** | 重力 0.18 / 阻力 0.985（每幀 -1.5%）/ 風 ±0.08 | 藍綠漸層 + 25 顆飄浮氣泡 |
+
+#### 架構改動
+- 新增 **`src/game/engine/themes.ts`** registry（依 powerups.ts 同樣的 pattern）
+  - `Theme` interface: background / physics / buildings.palette
+  - `getTheme(id)` helper（unknown id fallback 到 city）
+  - `THEME_LIST` 排序常數給 UI 用
+- **`GameState` 加 `themeId: 'city' | 'space' | 'ocean'`**（type 級鎖定可選值）
+- **`StartScreen` 新增 3 格主題選按鈕**（emoji + label + 黃框 ring 標示選中）
+- `App.tsx` `initGame` 接 theme：building palette / 預設 gravity / wind range
+- `Canvas drawing useEffect` 重寫背景：solid / gradient + 星星閃爍 + 氣泡上升
+- **`useGameLoop` banana flying 套用 `theme.physics.airResistance`**
+  - 城市：1.0（無變化）
+  - 太空：1.0（真空）
+  - 深海：0.985（每幀衰減 1.5%，視覺上香蕉「漂」）
+
+#### 測試
+- 新增 `themes.test.ts`（13 tests）
+- 驗證 schema 完整性 + 物理參數合理性 + getTheme fallback
+- **總測試：72 → 85 (+13)**，全綠 1.12s
+
+### 🚦 v3.14.0 數字結算
+
+| 指標 | v3.13.0 | **v3.14.0** | 變化 |
+|---|---|---|---|
+| 主題數量 | 1（固定）| **3**（可選）| +2 |
+| 註冊表 | powerups | powerups + **themes** | +1 |
+| 單元測試 | 72 | **85** | +13 |
+| Engine 模組 | 6 | **7** | +1 |
+
 ## [3.13.0] - 2026-04-29
 
 ### 🛡️ B6 Cloud Function 正式部署上線

@@ -65,6 +65,8 @@ export interface MeteorShower {
 }
 
 export interface GameState {
+  /** 當前主題 ID（city / space / ocean），影響背景 / 物理 / 建築配色 */
+  themeId: 'city' | 'space' | 'ocean';
   player1Pos: Point;
   player2Pos: Point;
   sunPos: Point;

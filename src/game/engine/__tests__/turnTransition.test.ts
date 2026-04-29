@@ -19,6 +19,7 @@ const NO_BUILDING_X = 400;
 /** 建立一個合理的測試 base state */
 function makeState(overrides: Partial<GameState> = {}): GameState {
   return {
+    themeId: 'city',
     player1Pos: {x: 100, y: 200},
     player2Pos: {x: 700, y: 200},
     sunPos: {x: 400, y: 100},

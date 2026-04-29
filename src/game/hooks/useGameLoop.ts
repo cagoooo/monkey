@@ -27,6 +27,7 @@ import {getGroundY} from '../engine/terrain';
 import {calculateScore} from '../engine/scoring';
 import {handleTurnTransition} from '../engine/turnTransition';
 import {getPowerUp} from '../engine/powerups';
+import {getTheme} from '../engine/themes';
 
 const TICK_MS = 20;
 /** dev mode 下，tick 超過此 ms 數會 warn — 用於追蹤 iPhone 等舊裝置的掉幀 */
@@ -257,13 +258,15 @@ export function useGameLoop({status, setGameState, initGame}: UseGameLoopArgs) {
 
         // ── Banana flying ──
         if (prev.status === 'throwing' && prev.banana) {
+          // 主題物理：套用 airResistance（深海主題會讓香蕉「飄」起來）
+          const airResistance = getTheme(prev.themeId).physics.airResistance;
           const newPos = {
             x: prev.banana.pos.x + prev.banana.vel.x,
             y: prev.banana.pos.y + prev.banana.vel.y,
           };
           const newVel = {
-            x: prev.banana.vel.x + prev.wind,
-            y: prev.banana.vel.y + prev.gravity,
+            x: (prev.banana.vel.x + prev.wind) * airResistance,
+            y: (prev.banana.vel.y + prev.gravity) * airResistance,
           };
           const newAngle = prev.banana.angle + 0.3;
 

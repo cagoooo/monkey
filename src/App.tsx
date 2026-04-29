@@ -23,6 +23,7 @@ import { useScoreSubmission } from './game/hooks/useScoreSubmission';
 import { useInput } from './game/hooks/useInput';
 import { useGameLoop } from './game/hooks/useGameLoop';
 import { generateWindowGrid } from './game/engine/terrain';
+import { getTheme, ThemeId } from './game/engine/themes';
 
 const COLORS = PLAYER_COLORS;
 
@@ -34,6 +35,7 @@ export default function App() {
   const [gravityInput, setGravityInput] = useState('9.8');
   const [p1NameInput, setP1NameInput] = useState('玩家一');
   const [p2NameInput, setP2NameInput] = useState('玩家二');
+  const [themeId, setThemeId] = useState<ThemeId>('city');
   const [message, setMessage] = useState<string>('');
   const [isMuted, setIsMuted] = useState(soundService.isMuted());
   const leaderboard = useLeaderboard();
@@ -146,12 +148,14 @@ export default function App() {
 
   // Initialize Game
   const initGame = (customGravity?: number, resetScores: boolean = false) => {
+    const theme = getTheme(themeId);
+    const palette = theme.buildings.palette;
     const buildings: Building[] = [];
     let currentX = 0;
     while (currentX < CANVAS_WIDTH) {
       const width = 60 + Math.random() * 60;
       const height = 100 + Math.random() * 300;
-      
+
       const windows = generateWindowGrid(
         Math.floor(height / 15),
         Math.floor(width / 10)
@@ -162,7 +166,7 @@ export default function App() {
         y: CANVAS_HEIGHT - height,
         width: Math.min(width, CANVAS_WIDTH - currentX),
         height,
-        color: COLORS[Math.floor(Math.random() * COLORS.length)],
+        color: palette[Math.floor(Math.random() * palette.length)],
         windows,
       });
       currentX += width;
@@ -229,11 +233,15 @@ export default function App() {
     });
 
     setGameState(prev => {
-      const g = typeof customGravity === 'number' ? customGravity : (prev?.gravity || 0.25);
+      // 主題決定預設物理；玩家在 StartScreen 微調的 customGravity 仍會覆蓋
+      const g = typeof customGravity === 'number' ? customGravity : (prev?.gravity ?? theme.physics.gravity);
+      const [windMin, windMax] = theme.physics.windRange;
+      const wind = windMin + Math.random() * (windMax - windMin);
       // If resetScores is true, it's a full game restart (or sun explosion)
       const shouldResetSun = resetScores || (prev?.sunHits || 0) >= 5;
-      
+
       return {
+        themeId,
         player1Pos: p1Pos,
         player2Pos: p2Pos,
         sunPos: { x: CANVAS_WIDTH / 2 + (Math.random() * 100 - 50), y: 50 + Math.random() * 50 },
@@ -244,7 +252,7 @@ export default function App() {
         particles: [],
         shake: 0,
         currentPlayer: starter,
-        wind: (Math.random() * 2 - 1) * 0.1,
+        wind,
         scores: resetScores ? [0, 0] : (prev?.scores || [0, 0]),
         playerNames: [p1NameInput || '玩家一', p2NameInput || '玩家二'],
         gravity: g,
@@ -373,9 +381,56 @@ export default function App() {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // Clear
-    ctx.fillStyle = '#0000AA';
+    // ────────────────────────────────────────────────
+    // Clear — 依主題畫背景（C4 多地圖系統）
+    // ────────────────────────────────────────────────
+    const theme = getTheme(gameState.themeId);
+    const bgLayer = theme.background[0];
+    const bgColors = bgLayer?.colors ?? ['#0000AA'];
+    if (bgLayer?.kind === 'gradient' && bgColors.length >= 2) {
+      const grad = ctx.createLinearGradient(0, 0, 0, CANVAS_HEIGHT);
+      grad.addColorStop(0, bgColors[0]);
+      grad.addColorStop(1, bgColors[1]);
+      ctx.fillStyle = grad;
+    } else {
+      ctx.fillStyle = bgColors[0];
+    }
     ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+
+    // 主題裝飾層（星星 / 氣泡）— 簡單實作：依時間繪製
+    for (let i = 1; i < theme.background.length; i++) {
+      const layer = theme.background[i];
+      if (layer.kind === 'stars') {
+        // 確定性星空（用三角函數產生看似隨機但每幀一致的點）
+        ctx.fillStyle = '#FFFFFF';
+        for (let s = 0; s < 80; s++) {
+          const sx = (Math.sin(s * 12.9898) * 43758.5453) % 1;
+          const sy = (Math.sin(s * 78.233) * 43758.5453) % 1;
+          const x = (Math.abs(sx) * CANVAS_WIDTH) | 0;
+          const y = (Math.abs(sy) * CANVAS_HEIGHT * 0.7) | 0; // 集中上半部
+          // 閃爍：用 time 與 s 偏移
+          const twinkle = (Math.sin(Date.now() / 1000 * 2 + s) * 0.5 + 0.5) * 0.7 + 0.3;
+          ctx.globalAlpha = twinkle;
+          ctx.fillRect(x, y, 2, 2);
+        }
+        ctx.globalAlpha = 1;
+      } else if (layer.kind === 'bubbles') {
+        // 飄浮氣泡：上升軌跡用 mod 重置
+        ctx.strokeStyle = 'rgba(180, 220, 255, 0.6)';
+        ctx.lineWidth = 1.5;
+        for (let b = 0; b < 25; b++) {
+          const seed = Math.sin(b * 13.7) * 9999;
+          const baseX = (Math.abs(seed) % CANVAS_WIDTH) | 0;
+          const speed = 30 + (Math.abs(seed * 2) % 50);
+          const y = CANVAS_HEIGHT - ((Date.now() / speed + b * 50) % CANVAS_HEIGHT);
+          const wobbleX = baseX + Math.sin(Date.now() / 500 + b) * 10;
+          const r = 3 + (b % 4);
+          ctx.beginPath();
+          ctx.arc(wobbleX, y, r, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+      }
+    }
 
     const time = Date.now() / 1000;
 
@@ -436,8 +491,13 @@ export default function App() {
       });
     });
 
-    // Draw Destructions (Holes)
-    ctx.fillStyle = '#0000AA';
+    // Draw Destructions (Holes) — 用主題背景色填補挖洞，模擬「看到天空」
+    if (bgLayer?.kind === 'gradient' && bgColors.length >= 2) {
+      // 漸層背景：用中間色（兩色平均的近似）填洞
+      ctx.fillStyle = bgColors[Math.floor(bgColors.length / 2)] ?? bgColors[0];
+    } else {
+      ctx.fillStyle = bgColors[0];
+    }
     gameState.destructions.forEach(d => {
       ctx.beginPath();
       ctx.arc(d.pos.x, d.pos.y, d.radius, 0, Math.PI * 2);
@@ -1503,11 +1563,13 @@ export default function App() {
               p1NameInput={p1NameInput}
               p2NameInput={p2NameInput}
               gravityInput={gravityInput}
+              themeId={themeId}
               isMuted={isMuted}
               isFullscreen={isFullscreen}
               onP1NameChange={setP1NameInput}
               onP2NameChange={setP2NameInput}
               onGravityChange={setGravityInput}
+              onThemeChange={setThemeId}
               onStartGame={handleStartGame}
               onToggleMute={toggleMute}
               onToggleFullscreen={toggleFullscreen}

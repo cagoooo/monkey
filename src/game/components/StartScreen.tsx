@@ -8,16 +8,19 @@
 import {Volume2, VolumeX} from 'lucide-react';
 import {motion} from 'motion/react';
 import {BananaOrbit} from './decorations';
+import {THEME_LIST, ThemeId} from '../engine/themes';
 
 interface StartScreenProps {
   p1NameInput: string;
   p2NameInput: string;
   gravityInput: string;
+  themeId: ThemeId;
   isMuted: boolean;
   isFullscreen: boolean;
   onP1NameChange: (v: string) => void;
   onP2NameChange: (v: string) => void;
   onGravityChange: (v: string) => void;
+  onThemeChange: (v: ThemeId) => void;
   onStartGame: () => void;
   onToggleMute: () => void;
   onToggleFullscreen: () => void;
@@ -27,11 +30,13 @@ export function StartScreen({
   p1NameInput,
   p2NameInput,
   gravityInput,
+  themeId,
   isMuted,
   isFullscreen,
   onP1NameChange,
   onP2NameChange,
   onGravityChange,
+  onThemeChange,
   onStartGame,
   onToggleMute,
   onToggleFullscreen,
@@ -72,6 +77,30 @@ export function StartScreen({
         {isMuted ? <VolumeX size={20} /> : <Volume2 size={20} />}
         {isMuted ? '音效: 關閉' : '音效: 開啟'}
       </motion.button>
+
+      {/* 主題選單（C4 多地圖系統）*/}
+      <div className="w-full max-w-2xl px-4 mb-4 md:mb-8">
+        <label className="block text-[10px] md:text-sm uppercase opacity-70 text-center mb-2">
+          🗺 戰場主題
+        </label>
+        <div className="grid grid-cols-3 gap-2 md:gap-3">
+          {THEME_LIST.map(t => (
+            <button
+              key={t.id}
+              onClick={() => onThemeChange(t.id)}
+              className={`retro-button flex flex-col items-center justify-center gap-1 py-3 px-2 transition-all ${
+                themeId === t.id
+                  ? 'ring-4 ring-yellow-400 scale-105'
+                  : 'opacity-60 hover:opacity-100'
+              }`}
+              aria-label={`選擇主題：${t.label}`}
+            >
+              <span className="text-2xl md:text-3xl">{t.emoji}</span>
+              <span className="text-xs md:text-sm font-bold">{t.label}</span>
+            </button>
+          ))}
+        </div>
+      </div>
 
       <div className="flex flex-col md:flex-row gap-4 md:gap-8 mb-4 md:mb-12 w-full max-w-2xl px-4">
         <div className="flex-1 flex flex-col gap-1 md:gap-2">
