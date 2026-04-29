@@ -1,25 +1,33 @@
 /**
- * 主題註冊表（C4 多地圖系統第一波）。
+ * 主題註冊表（C4 多地圖系統，第二波擴充）。
  *
  * 設計原則：
  * - 主題只改「視覺 + 物理參數」，不動 game logic 本體
  * - 加新主題只要在 THEMES 加一筆 + 給個 emoji 即可
  * - StartScreen 自動列出所有 THEMES
  *
- * 第一波 3 個主題（v3.14.0）：
- *   🏙 city  — 預設經典城市天際線，與 v3.13.x 完全相容
- *   🚀 space — 低重力 + 深紫黑天空 + 星星
- *   🌊 ocean — 高阻力 + 深藍漸層 + 飄浮感（香蕉飛得慢）
- *
- * 後續可擴充（v3.14.x+）：
- *   🏫 校園 / 🎄 聖誕 / 🌃 城市夜景 / 🔥 火山
+ * 6 個主題：
+ *   🏙 city    — 預設經典城市天際線
+ *   🚀 space   — 低重力 + 深紫黑天空 + 星星
+ *   🌊 ocean   — 高阻力 + 深藍漸層 + 飄浮感
+ *   🏫 school  — 黑板綠 + 教學樓配色（v3.15.0 新增）
+ *   🎄 festive — 紅金漸層 + 飄雪（v3.15.0 新增）
+ *   🌋 volcano — 火紅漸層 + 飛揚火星（v3.15.0 新增）
  */
 
-export type ThemeId = 'city' | 'space' | 'ocean';
+export type ThemeId = 'city' | 'space' | 'ocean' | 'school' | 'festive' | 'volcano';
 
 export interface BackgroundLayer {
-  /** 圖層類型：純色 / 漸層 / 星星粒子 / 氣泡粒子 */
-  kind: 'solid' | 'gradient' | 'stars' | 'bubbles';
+  /**
+   * 圖層類型：
+   * - solid     純色
+   * - gradient  垂直漸層
+   * - stars     太空星空（白點 + 閃爍）
+   * - bubbles   海底氣泡（從下往上）
+   * - snow      飄雪（從上往下）
+   * - lavaSparks 火星（從下往上 + 紅橘色）
+   */
+  kind: 'solid' | 'gradient' | 'stars' | 'bubbles' | 'snow' | 'lavaSparks';
   /** 純色或漸層用 */
   colors?: string[];
 }
@@ -51,6 +59,14 @@ export interface Theme {
     /** 是否生成建築（太空 / 海底可能改成漂浮平台）*/
     enabled: boolean;
   };
+
+  /** 香蕉飛行拖尾顏色（v3.15.0 新增主題化）*/
+  bananaTrail?: {
+    /** 拖尾線條顏色（rgba 格式）*/
+    color: string;
+    /** 線寬 */
+    width: number;
+  };
 }
 
 export const THEMES: Record<ThemeId, Theme> = {
@@ -71,6 +87,10 @@ export const THEMES: Record<ThemeId, Theme> = {
       palette: ['#AAAAAA', '#00AAAA', '#AA0000'],
       enabled: true,
     },
+    bananaTrail: {
+      color: 'rgba(255, 255, 255, 0.3)',
+      width: 1.5,
+    },
   },
 
   space: {
@@ -80,17 +100,20 @@ export const THEMES: Record<ThemeId, Theme> = {
     description: '低重力 + 漫天星辰，香蕉飛超遠',
     background: [
       {kind: 'gradient', colors: ['#0a0a2e', '#000000']},
-      {kind: 'stars'}, // 由 canvas 繪圖層產生
+      {kind: 'stars'},
     ],
     physics: {
-      gravity: 0.10, // 約地球 40%
+      gravity: 0.10,
       airResistance: 1.0,
-      windRange: [-0.05, 0.05], // 太空真空，風力小一點
+      windRange: [-0.05, 0.05],
     },
     buildings: {
-      // 太空站灰紫色調
       palette: ['#5a4a8a', '#7a6aaa', '#9a8aca'],
       enabled: true,
+    },
+    bananaTrail: {
+      color: 'rgba(180, 230, 255, 0.55)', // 太空藍光
+      width: 2,
     },
   },
 
@@ -104,14 +127,91 @@ export const THEMES: Record<ThemeId, Theme> = {
       {kind: 'bubbles'},
     ],
     physics: {
-      gravity: 0.18,           // 比城市稍小（浮力效果）
-      airResistance: 0.985,    // 每幀衰減 1.5%
+      gravity: 0.18,
+      airResistance: 0.985,
       windRange: [-0.08, 0.08],
     },
     buildings: {
-      // 海底珊瑚 / 沉船配色
       palette: ['#4a7a8a', '#6a4a4a', '#8a6a4a'],
       enabled: true,
+    },
+    bananaTrail: {
+      color: 'rgba(150, 220, 255, 0.5)', // 海底淺藍泡沫
+      width: 2,
+    },
+  },
+
+  school: {
+    id: 'school',
+    label: '校園決鬥',
+    emoji: '🏫',
+    description: '黑板綠背景 + 教學樓配色，課間爭霸',
+    background: [
+      {kind: 'gradient', colors: ['#2d4a2d', '#1a2e1a']},
+    ],
+    physics: {
+      gravity: 0.25, // 標準
+      airResistance: 1.0,
+      windRange: [-0.08, 0.08],
+    },
+    buildings: {
+      // 教學樓：紅磚 / 灰水泥 / 黃色涼亭
+      palette: ['#8B4513', '#999999', '#DAA520', '#A0522D'],
+      enabled: true,
+    },
+    bananaTrail: {
+      color: 'rgba(255, 255, 255, 0.4)', // 粉筆白
+      width: 1.5,
+    },
+  },
+
+  festive: {
+    id: 'festive',
+    label: '節慶煙火',
+    emoji: '🎄',
+    description: '紅金漸層 + 飄雪，節慶氣氛',
+    background: [
+      {kind: 'gradient', colors: ['#3a0d0d', '#1a0505']},
+      {kind: 'snow'},
+    ],
+    physics: {
+      gravity: 0.22, // 略低（雪天感）
+      airResistance: 1.0,
+      windRange: [-0.12, 0.12], // 風更大（雪花飄）
+    },
+    buildings: {
+      // 節慶配色：聖誕紅 / 金 / 雪白屋頂
+      palette: ['#8B0000', '#B8860B', '#F5F5F5', '#228B22'],
+      enabled: true,
+    },
+    bananaTrail: {
+      color: 'rgba(255, 215, 0, 0.6)', // 金色閃光
+      width: 2.5,
+    },
+  },
+
+  volcano: {
+    id: 'volcano',
+    label: '火山熔岩',
+    emoji: '🌋',
+    description: '紅橘漸層 + 飄落火星，岩漿戰場',
+    background: [
+      {kind: 'gradient', colors: ['#5a1a0a', '#1a0505']},
+      {kind: 'lavaSparks'},
+    ],
+    physics: {
+      gravity: 0.30, // 較重（熱浪壓迫感）
+      airResistance: 1.0,
+      windRange: [-0.06, 0.06],
+    },
+    buildings: {
+      // 火山岩 / 玄武岩 / 熔岩流
+      palette: ['#3a2a2a', '#5a3a3a', '#8B4513', '#FF4500'],
+      enabled: true,
+    },
+    bananaTrail: {
+      color: 'rgba(255, 100, 0, 0.55)', // 火橘
+      width: 2,
     },
   },
 };
@@ -123,6 +223,6 @@ export function getTheme(id: ThemeId | string | undefined): Theme {
 }
 
 /** UI 列表用：所有可選主題（依 ThemeId 順序）*/
-export const THEME_LIST: readonly Theme[] = ['city', 'space', 'ocean'].map(
-  id => THEMES[id as ThemeId]
-);
+export const THEME_LIST: readonly Theme[] = [
+  'city', 'space', 'ocean', 'school', 'festive', 'volcano',
+].map(id => THEMES[id as ThemeId]);

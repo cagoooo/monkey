@@ -429,6 +429,33 @@ export default function App() {
           ctx.arc(wobbleX, y, r, 0, Math.PI * 2);
           ctx.stroke();
         }
+      } else if (layer.kind === 'snow') {
+        // 飄雪：從上往下，左右擺動
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+        for (let s = 0; s < 60; s++) {
+          const seed = Math.sin(s * 17.3) * 9999;
+          const baseX = (Math.abs(seed) % CANVAS_WIDTH) | 0;
+          const speed = 50 + (Math.abs(seed * 3) % 80);
+          const y = (Date.now() / speed + s * 30) % CANVAS_HEIGHT;
+          const wobbleX = baseX + Math.sin(Date.now() / 400 + s * 0.7) * 15;
+          const size = 2 + (s % 3);
+          ctx.fillRect(wobbleX, y, size, size);
+        }
+      } else if (layer.kind === 'lavaSparks') {
+        // 火星上升：從下往上，紅橘漸暗
+        for (let p = 0; p < 40; p++) {
+          const seed = Math.sin(p * 19.7) * 9999;
+          const baseX = (Math.abs(seed) % CANVAS_WIDTH) | 0;
+          const speed = 25 + (Math.abs(seed * 5) % 60);
+          const lifeProgress = ((Date.now() / speed + p * 80) % CANVAS_HEIGHT) / CANVAS_HEIGHT;
+          const y = CANVAS_HEIGHT - lifeProgress * CANVAS_HEIGHT;
+          const wobbleX = baseX + Math.sin(Date.now() / 300 + p) * 8;
+          // 顏色漸變：底紅 → 上橘 → 暗
+          const opacity = 1 - lifeProgress;
+          ctx.fillStyle = `rgba(255, ${100 + lifeProgress * 100 | 0}, 0, ${opacity * 0.85})`;
+          const size = 2 + (p % 2);
+          ctx.fillRect(wobbleX, y, size, size);
+        }
       }
     }
 
@@ -1030,15 +1057,19 @@ export default function App() {
         shakeY = (Math.random() - 0.5) * 8;
       }
       
-      ctx.translate(pos.x + shakeX, pos.y + shakeY);
-      
+      // C5 Sprite 動畫：idle 呼吸（沒在投擲、沒贏、沒死、沒掙扎時，輕微上下浮動）
+      const isIdle = !isThrowing && !isWinner && !isDead && !isStruggling;
+      const idleBob = isIdle ? Math.sin(Date.now() / 600) * 0.8 : 0;
+
+      ctx.translate(pos.x + shakeX, pos.y + shakeY + idleBob);
+
       if (isDead) {
         ctx.rotate(isPlayer1 ? -Math.PI / 2 : Math.PI / 2);
         ctx.translate(0, 10);
       }
 
       // Refined Gorilla Drawing
-      const p = 2.5; 
+      const p = 2.5;
       const furColor = color; // Main fur color
       const faceColor = '#FFCC99'; // Lighter face/chest color
       const shadowColor = 'rgba(0,0,0,0.2)';
@@ -1052,15 +1083,19 @@ export default function App() {
       // 2. Head
       ctx.fillStyle = furColor;
       ctx.fillRect(-2.5 * p, -10.5 * p, 5 * p, 4.5 * p); // Main head shape
-      
+
       // 3. Face Mask
       ctx.fillStyle = faceColor;
       ctx.fillRect(-1.5 * p, -8.5 * p, 3 * p, 2.5 * p); // Face area
-      
-      // 4. Eyes
+
+      // 4. Eyes — C5 加入眨眼（每 ~3 秒短暫閉眼 0.2 秒）
       ctx.fillStyle = '#000';
-      ctx.fillRect(-1 * p, -7.5 * p, 0.8 * p, 0.8 * p); // Left eye
-      ctx.fillRect(0.2 * p, -7.5 * p, 0.8 * p, 0.8 * p); // Right eye
+      const blinkCycle = (Date.now() / 1000) % 3;
+      const isBlinking = !isDead && blinkCycle < 0.2;
+      const eyeHeight = isBlinking ? 0.15 * p : 0.8 * p;
+      const eyeY = isBlinking ? -7.0 * p : -7.5 * p;
+      ctx.fillRect(-1 * p, eyeY, 0.8 * p, eyeHeight); // Left eye
+      ctx.fillRect(0.2 * p, eyeY, 0.8 * p, eyeHeight); // Right eye
       
       // 5. Body
       ctx.fillStyle = furColor;
@@ -1345,14 +1380,25 @@ export default function App() {
         gameState.banana.type
       );
 
-      // Trail
-      ctx.strokeStyle = gameState.banana.type === 'acid' ? 'rgba(0, 255, 0, 0.3)' : 'rgba(255, 255, 255, 0.3)';
+      // Trail — 主題化（acid 強酸保留綠色覆蓋；其他依 theme.bananaTrail）
+      const trailSpec = theme.bananaTrail;
+      if (gameState.banana.type === 'acid') {
+        ctx.strokeStyle = 'rgba(0, 255, 0, 0.3)';
+        ctx.lineWidth = 1.5;
+      } else if (trailSpec) {
+        ctx.strokeStyle = trailSpec.color;
+        ctx.lineWidth = trailSpec.width;
+      } else {
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+        ctx.lineWidth = 1.5;
+      }
       ctx.beginPath();
       gameState.banana.trail.forEach((p, i) => {
         if (i === 0) ctx.moveTo(p.x, p.y);
         else ctx.lineTo(p.x, p.y);
       });
       ctx.stroke();
+      ctx.lineWidth = 1; // reset
     }
 
     // Draw Explosion
