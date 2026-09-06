@@ -3,6 +3,8 @@
 [![Deploy](https://github.com/cagoooo/monkey/actions/workflows/deploy.yml/badge.svg)](https://github.com/cagoooo/monkey/actions/workflows/deploy.yml)
 [![Live Demo](https://img.shields.io/badge/Live-Demo-yellow)](https://cagoooo.github.io/monkey/)
 
+> 📌 **目前版本：v3.16.0**（依據 `CHANGELOG.md`）
+
 啟發自 1991 年 QBASIC 經典遊戲 **GORILLAS.BAS**。控制你的猴子，瞄準對方並投出爆炸香蕉，享受兩人同樂的像素風格城市天際線大戰。
 
 **🎮 線上玩**：https://cagoooo.github.io/monkey/
