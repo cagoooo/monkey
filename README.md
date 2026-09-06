@@ -164,7 +164,7 @@ Apache-2.0
 - Repository：`cagoooo/monkey`
 - 可見性：公開
 - 主要技術：TypeScript、React、Vite、Firebase、Tailwind CSS
-- 線上入口：未在 GitHub repository metadata 設定
+- 線上入口：<https://cagoooo.github.io/monkey/>
 
 ### 可以怎麼應用
 
