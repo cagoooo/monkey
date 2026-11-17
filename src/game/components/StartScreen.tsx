@@ -157,12 +157,29 @@ export function StartScreen({
           {isFullscreen ? '退出全螢幕' : '全螢幕'}
         </button>
 
-        {/* 版本號 inline 在底部，不再 absolute 重疊 */}
-        <div className="text-[10px] opacity-40 text-center pt-2">
-          <span>ＡＮＴＹＥＨ修正</span>
-          <span className="mx-2">·</span>
-          <span>v1.3.0</span>
-        </div>
+        {/* v3.16.1：網站頁尾（作者署名連阿凱老師教育科技創新專區），版本號一併收進來 */}
+        <footer className="w-full max-w-2xl mt-4 border-2 border-white rounded-lg bg-black/40 px-4 py-3 md:py-4 text-center">
+          <p className="text-yellow-400 font-bold text-sm md:text-base">🍌 猴子丟香蕉・雙人回合制拋物線對戰</p>
+          <p className="mt-2 text-xs md:text-sm leading-relaxed">
+            Made with <span aria-label="愛心">❤️</span> by{' '}
+            <a
+              href="https://cagoooo.github.io/Akai/"
+              target="_blank"
+              rel="noopener noreferrer"
+              title="阿凱老師教育科技創新專區"
+              className="font-bold text-yellow-300 underline decoration-dotted underline-offset-4 hover:text-white"
+            >
+              阿凱老師
+            </a>
+            <span className="hidden sm:inline" aria-hidden="true"> ・</span>
+            <span className="block sm:inline">桃園市龍潭區石門國民小學</span>
+          </p>
+          <p className="mt-2 text-[10px] opacity-50">
+            <span>ＡＮＴＹＥＨ修正</span>
+            <span className="mx-2">·</span>
+            <span>v1.3.0</span>
+          </p>
+        </footer>
       </div>
     </motion.div>
   );

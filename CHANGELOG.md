@@ -1,5 +1,10 @@
 # 📜 更新日誌 (CHANGELOG)
 
+## [3.16.1] - 2026-11-17
+
+### ✨ 新增
+- 開始畫面底部新增網站頁尾：遊戲名稱、作者署名「Made with ❤️ by 阿凱老師」連到阿凱老師教育科技創新專區（https://cagoooo.github.io/Akai/）與學校全名，原本的版本標示收進頁尾。
+
 ## [3.16.0] - 2026-04-29
 
 ### 🎨 C5 完整版：MonkeyRenderer sprite-ready 架構
