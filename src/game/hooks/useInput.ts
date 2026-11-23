@@ -9,7 +9,7 @@
  * - 拖曳力道 < 10 視為點按，不發射只取消瞄準
  */
 
-import {Dispatch, RefObject, SetStateAction, useCallback} from 'react';
+import {Dispatch, RefObject, SetStateAction, useCallback, useEffect} from 'react';
 import {GameState} from '../types';
 import {CANVAS_WIDTH, CANVAS_HEIGHT} from '../constants';
 import {soundService} from '../../services/soundService';
@@ -202,6 +202,25 @@ export function useInput({canvasRef, setGameState, setMessage}: UseInputArgs) {
   const handleCanvasTouchEnd = useCallback(() => {
     releaseAim();
   }, [releaseAim]);
+
+  /** 觸控被系統中斷（來電、手勢）→ 取消瞄準，不發射 */
+  const cancelAim = useCallback(() => {
+    setGameState(prev => {
+      if (!prev || prev.status !== 'aiming' || !prev.dragStart) return prev;
+      return {...prev, dragStart: null, dragCurrent: null};
+    });
+  }, [setGameState]);
+
+  // 滑鼠拖出畫布後放開，canvas 收不到 mouseup → 在 window 補收尾（releaseAim 已防重複：
+  // 非 aiming 或沒有 dragStart 時什麼都不做）
+  useEffect(() => {
+    window.addEventListener('mouseup', releaseAim);
+    window.addEventListener('touchcancel', cancelAim);
+    return () => {
+      window.removeEventListener('mouseup', releaseAim);
+      window.removeEventListener('touchcancel', cancelAim);
+    };
+  }, [releaseAim, cancelAim]);
 
   return {
     handleCanvasMouseDown,

@@ -22,6 +22,7 @@ import { useViewportHeight } from './game/hooks/useViewportHeight';
 import { useFullscreen } from './game/hooks/useFullscreen';
 import { useScoreSubmission } from './game/hooks/useScoreSubmission';
 import { useInput } from './game/hooks/useInput';
+import { vibrate } from './services/haptics';
 import { useGameLoop } from './game/hooks/useGameLoop';
 import { generateWindowGrid } from './game/engine/terrain';
 import { getTheme, ThemeId } from './game/engine/themes';
@@ -339,6 +340,7 @@ export default function App() {
     if (gameState.status === 'throwing') {
       soundService.playThrow();
     } else if (gameState.status === 'exploding') {
+      vibrate(60);
       if (gameState.explosion?.type === 'acid') {
         soundService.playMelting();
       } else if (gameState.explosion && gameState.explosion.maxRadius > 35) {

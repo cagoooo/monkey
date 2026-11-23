@@ -29,6 +29,7 @@ import {handleTurnTransition} from '../engine/turnTransition';
 import {getPowerUp} from '../engine/powerups';
 import {getTheme} from '../engine/themes';
 import {makeExplosionParticles} from '../engine/particles';
+import {firstSweepHit} from '../engine/collision';
 
 const TICK_MS = 20;
 /** dev mode 下，tick 超過此 ms 數會 warn — 用於追蹤 iPhone 等舊裝置的掉幀 */
@@ -42,16 +43,28 @@ interface UseGameLoopArgs {
 
 export function useGameLoop({status, setGameState, initGame}: UseGameLoopArgs) {
   const lastWindowToggle = useRef<number>(0);
+  // StrictMode（dev）會把 setState updater 執行兩次；以「同一個 prev 狀態物件只算第一次」去重，
+  // 避免 updater 內的音效 / setTimeout 副作用重複觸發。
+  const handledPrev = useRef(new WeakSet<object>());
 
   useEffect(() => {
     if (!status) return;
 
-    const interval = setInterval(() => {
+    let interval: ReturnType<typeof setInterval> | null = null;
+
+    const tick = () => {
       // dev-only frame timing：超過 16ms 就 warn（B3 量測先行策略）
       const tickStart = import.meta.env.DEV ? performance.now() : 0;
 
       setGameState(prev => {
         if (!prev) return null;
+
+        const firstRun = !handledPrev.current.has(prev);
+        handledPrev.current.add(prev);
+        /** 只在此 prev 第一次被處理時執行副作用 */
+        const once = (fn: () => void) => {
+          if (firstRun) fn();
+        };
 
         const next: GameState = {...prev};
 
@@ -126,8 +139,10 @@ export function useGameLoop({status, setGameState, initGame}: UseGameLoopArgs) {
             next.explosion = {pos: explosionPos, radius: 0, maxRadius: 1000, type: 'giant'};
             next.sunState = 'normal';
             next.sunHits = 0;
-            soundService.playHit();
-            soundService.playExplosion();
+            once(() => {
+              soundService.playHit();
+              soundService.playExplosion();
+            });
           }
         }
 
@@ -197,7 +212,7 @@ export function useGameLoop({status, setGameState, initGame}: UseGameLoopArgs) {
                       type: 'debris',
                     });
                   }
-                  soundService.playHit();
+                  once(() => soundService.playHit());
                   break;
                 }
               }
@@ -288,7 +303,7 @@ export function useGameLoop({status, setGameState, initGame}: UseGameLoopArgs) {
             } else {
               next.player2Projectile = hitTreasure.type;
             }
-            soundService.playThrow(); // Re-use throw sound for pickup
+            once(() => soundService.playThrow()); // Re-use throw sound for pickup
           }
 
           // 1. Out of bounds
@@ -307,7 +322,7 @@ export function useGameLoop({status, setGameState, initGame}: UseGameLoopArgs) {
           if (distToSun < 35 && !hasHitSun && prev.sunState !== 'falling') {
             newSunHits = prev.sunHits + 1;
             hasHitSun = true;
-            soundService.playSunHit();
+            once(() => soundService.playSunHit());
             if (newSunHits === 1) newSunState = 'surprised';
             else if (newSunHits === 2) newSunState = 'sunglasses';
             else if (newSunHits === 3) newSunState = 'dead';
@@ -315,22 +330,32 @@ export function useGameLoop({status, setGameState, initGame}: UseGameLoopArgs) {
             else if (newSunHits >= 5) newSunState = 'falling';
           }
 
-          // 2. Hit Monkey
+          // 2/3. 連續碰撞：把本 tick 位移切成 ≤8px 子步，依序檢查猴子與建築，第一個碰到就停
+          // （軌跡 newPos / newVel 不變，只是多了中間取樣，避免高速香蕉穿過猴子或建築）
           const targetMonkey = prev.currentPlayer === 1 ? prev.player2Pos : prev.player1Pos;
           const selfMonkey = prev.currentPlayer === 1 ? prev.player1Pos : prev.player2Pos;
+          const trailLen = prev.banana.trail.length;
 
-          const distToTarget = Math.sqrt(
-            (newPos.x - targetMonkey.x) ** 2 + (newPos.y - targetMonkey.y) ** 2
-          );
-          const distToSelf = Math.sqrt(
-            (newPos.x - selfMonkey.x) ** 2 + (newPos.y - selfMonkey.y) ** 2
-          );
+          const sweepHit = firstSweepHit(prev.banana.pos, newPos, p => {
+            const dT = Math.sqrt((p.x - targetMonkey.x) ** 2 + (p.y - targetMonkey.y) ** 2);
+            const dS = Math.sqrt((p.x - selfMonkey.x) ** 2 + (p.y - selfMonkey.y) ** 2);
+            if (dT < MONKEY_SIZE || (dS < MONKEY_SIZE && trailLen > 10)) {
+              return {kind: 'monkey' as const, dS};
+            }
+            for (const bd of prev.buildings) {
+              if (p.x >= bd.x && p.x <= bd.x + bd.width && p.y >= bd.y) {
+                const inHole = prev.destructions.some(
+                  d => Math.sqrt((p.x - d.pos.x) ** 2 + (p.y - d.pos.y) ** 2) < d.radius
+                );
+                if (!inHole) return {kind: 'building' as const, bd};
+              }
+            }
+            return null;
+          });
 
-          if (
-            distToTarget < MONKEY_SIZE ||
-            (distToSelf < MONKEY_SIZE && prev.banana.trail.length > 10)
-          ) {
-            const isSelfHit = distToSelf < MONKEY_SIZE;
+          if (sweepHit && sweepHit.hit.kind === 'monkey') {
+            const newPos = sweepHit.pos; // 命中當下的子步位置（遮蔽 tick 終點）
+            const isSelfHit = sweepHit.hit.dS < MONKEY_SIZE;
             const newScores: [number, number] = [prev.scores[0], prev.scores[1]];
 
             if (isSelfHit) {
@@ -377,14 +402,12 @@ export function useGameLoop({status, setGameState, initGame}: UseGameLoopArgs) {
             };
           }
 
-          // 3. Hit Building
-          for (const b of prev.buildings) {
-            if (newPos.x >= b.x && newPos.x <= b.x + b.width && newPos.y >= b.y) {
-              const inHole = prev.destructions.some(
-                d => Math.sqrt((newPos.x - d.pos.x) ** 2 + (newPos.y - d.pos.y) ** 2) < d.radius
-              );
-
-              if (!inHole) {
+          // 3. Hit Building（由上方連續碰撞找到）
+          if (sweepHit && sweepHit.hit.kind === 'building') {
+            const b = sweepHit.hit.bd;
+            const newPos = sweepHit.pos;
+            {
+              {
                 const buildSpec = getPowerUp(prev.banana?.type);
                 const isSpecialAmmo = prev.banana?.type === 'acid' || prev.banana?.type === 'giant';
                 const ammoColor =
@@ -489,7 +512,9 @@ export function useGameLoop({status, setGameState, initGame}: UseGameLoopArgs) {
           if (prev.explosion.radius >= prev.explosion.maxRadius) {
             if (prev.explosion.maxRadius >= 1000) {
               // Sun explosion: restart game
-              setTimeout(() => initGame(undefined, true), 1000);
+              once(() => {
+                setTimeout(() => initGame(undefined, true), 1000);
+              });
               return {...next, status: 'roundOver', explosion: undefined};
             }
 
@@ -529,8 +554,29 @@ export function useGameLoop({status, setGameState, initGame}: UseGameLoopArgs) {
           console.warn(`[useGameLoop] Slow tick: ${elapsed.toFixed(2)}ms`);
         }
       }
-    }, TICK_MS);
+    };
 
-    return () => clearInterval(interval);
+    const startLoop = () => {
+      if (interval === null) interval = setInterval(tick, TICK_MS);
+    };
+    const stopLoop = () => {
+      if (interval !== null) {
+        clearInterval(interval);
+        interval = null;
+      }
+    };
+    // 分頁隱藏時瀏覽器會把 setInterval 降到約 1 秒一次，切回來像慢動作 → 隱藏時暫停、回來再繼續（狀態保留）
+    const onVisibility = () => {
+      if (document.visibilityState === 'hidden') stopLoop();
+      else startLoop();
+    };
+
+    if (document.visibilityState !== 'hidden') startLoop();
+    document.addEventListener('visibilitychange', onVisibility);
+
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibility);
+      stopLoop();
+    };
   }, [status, setGameState, initGame]);
 }

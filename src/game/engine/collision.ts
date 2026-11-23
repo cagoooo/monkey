@@ -44,3 +44,37 @@ export function vecFromAngle(angleRad: number, magnitude: number): Point {
     y: Math.sin(angleRad) * magnitude,
   };
 }
+
+/** 每個子步最大位移（px），須明顯小於猴子命中半徑，避免高速穿透 */
+export const SWEEP_MAX_STEP = 8;
+
+/**
+ * 把 from → to 的位移切成多個等距子步，回傳每一步的落點（最後一點必為 to）。
+ * 用於高速物體的連續碰撞檢測；軌跡本身（位置、速度）不受影響。
+ */
+export function sweepPoints(from: Point, to: Point, maxStep: number = SWEEP_MAX_STEP): Point[] {
+  const dist = distance(from, to);
+  const n = Math.max(1, Math.ceil(dist / maxStep));
+  const pts: Point[] = [];
+  for (let i = 1; i <= n; i++) {
+    const t = i / n;
+    pts.push({x: from.x + (to.x - from.x) * t, y: from.y + (to.y - from.y) * t});
+  }
+  return pts;
+}
+
+/**
+ * 沿 from → to 逐子步呼叫 test，回傳第一個命中的子步位置與 test 的結果；都沒命中回傳 null。
+ */
+export function firstSweepHit<T>(
+  from: Point,
+  to: Point,
+  test: (p: Point) => T | null | undefined | false,
+  maxStep: number = SWEEP_MAX_STEP
+): {pos: Point; hit: T} | null {
+  for (const p of sweepPoints(from, to, maxStep)) {
+    const hit = test(p);
+    if (hit) return {pos: p, hit};
+  }
+  return null;
+}
