@@ -85,6 +85,8 @@ export default defineConfig(({mode}) => {
           ],
         },
         workbox: {
+          // 舊版（自動更新模式）SW 交接用，說明見 public/sw-ext.js
+          importScripts: ['sw-ext.js'],
           // 用 NetworkFirst 處理 HTML，避免使用者一直拿到舊版 index.html
           globPatterns: ['**/*.{js,css,html,svg,png,ico,webp}'],
           navigateFallback: 'index.html',
