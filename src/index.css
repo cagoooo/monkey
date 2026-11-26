@@ -20,23 +20,77 @@
   @apply bg-[#AAAAAA] text-black px-4 py-1 border-b-4 border-r-4 border-black active:border-0 active:translate-y-1 active:translate-x-1 rounded-lg;
 }
 
+/* 畫布已依顯示大小提高實際解析度（App.tsx renderScale），不需再用像素放大 */
 canvas {
-  image-rendering: pixelated;
+  image-rendering: auto;
 }
 
+/* 遊戲框依視窗「寬、高」兩者取小值等比放大（4:3），不再寫死 800px。
+ * content-box：width 指的是畫面本身，邊框另外加在外面，畫布才不會被拉扁。 */
 .game-container {
-  width: 800px;
-  max-width: 100%;
-  aspect-ratio: 800 / 600;
+  box-sizing: content-box;
+  flex: none;
+  width: min(calc(100vw - 4px), calc((var(--vh, 1vh) * 100 - 4px) * 4 / 3));
+  aspect-ratio: 4 / 3;
   height: auto;
   margin: 0 auto;
+  border-width: 2px;
 }
 
-@media (max-width: 800px) {
+@media (min-width: 768px) {
   .game-container {
-    width: 100vw;
-    border-width: 2px;
+    width: min(calc(100vw - 3rem), calc((var(--vh, 1vh) * 100 - 7.5rem) * 4 / 3));
+    border-width: 4px;
   }
+}
+
+/* 矮螢幕（多數筆電）：收起底部說明文字，把高度全部讓給遊戲框 */
+@media (min-width: 768px) and (max-height: 820px) {
+  .game-container {
+    width: min(calc(100vw - 3rem), calc((var(--vh, 1vh) * 100 - 2.5rem) * 4 / 3));
+  }
+  .page-blurb {
+    display: none;
+  }
+}
+
+/* 寬螢幕（寬高比 ≥ 2:1）：遊戲框已被高度限制住、左右還有多的空間時，
+ * 才放兩欄側邊面板（玩法說明／英雄榜），各保留約 300px，不會反過來壓縮遊戲框 */
+.side-panel {
+  display: none;
+}
+
+@media (min-width: 1400px) and (min-aspect-ratio: 2 / 1) {
+  .game-container {
+    width: min(calc(100vw - 640px), calc((var(--vh, 1vh) * 100 - 3rem) * 4 / 3));
+  }
+  .side-panel {
+    display: flex;
+  }
+  .page-blurb {
+    display: none;
+  }
+}
+
+/* 遊戲內 HUD 跟著遊戲框大小縮放（cqw = 遊戲框寬度的 1%），並保留手機最小字級 */
+.game-content {
+  container-type: inline-size;
+}
+
+.hud-panel {
+  font-size: max(11px, 1.55cqw);
+}
+
+.hud-bar {
+  padding: max(8px, 1.6cqw);
+}
+
+.side-panel {
+  flex: 1 1 0;
+  min-width: 0;
+  max-width: 400px;
+  max-height: calc(var(--vh, 1vh) * 100 - 3rem);
+  overflow-y: auto;
 }
 
 /* ──────────────────────────────────────────

@@ -16,6 +16,8 @@ import { soundService } from './services/soundService';
 import { PortraitHint } from './game/components/PortraitHint';
 import { StartScreen } from './game/components/StartScreen';
 import { WinnerScreen } from './game/components/WinnerScreen';
+import { Leaderboard } from './game/components/Leaderboard';
+import { HowToPlay } from './game/components/HowToPlay';
 import { drawMonkey as renderMonkey, derivePose } from './game/components/MonkeyRenderer';
 import { useLeaderboard } from './game/hooks/useLeaderboard';
 import { useViewportHeight } from './game/hooks/useViewportHeight';
@@ -41,6 +43,24 @@ export default function App() {
   const [message, setMessage] = useState<string>('');
   const [isMuted, setIsMuted] = useState(soundService.isMuted());
   const leaderboard = useLeaderboard();
+  // 畫布實際像素倍率：遊戲框放大後提高解析度，避免文字與角色被放大成糊糊的馬賽克
+  const [renderScale, setRenderScale] = useState(1);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const update = () => {
+      const cssWidth = canvas.getBoundingClientRect().width;
+      if (!cssWidth) return;
+      const raw = (cssWidth * (window.devicePixelRatio || 1)) / CANVAS_WIDTH;
+      const next = Math.min(2, Math.max(1, Math.ceil(raw * 4) / 4));
+      setRenderScale(prev => (prev === next ? prev : next));
+    };
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(canvas);
+    return () => ro.disconnect();
+  }, []);
 
   // 全螢幕 + viewport-height 由 hook 管理
   useViewportHeight();
@@ -384,6 +404,7 @@ export default function App() {
     if (!canvas || !gameState) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
+    ctx.setTransform(renderScale, 0, 0, renderScale, 0, 0);
 
     // ────────────────────────────────────────────────
     // Clear — 依主題畫背景（C4 多地圖系統）
@@ -1304,7 +1325,7 @@ export default function App() {
       ctx.fill();
     }
 
-  }, [gameState]);
+  }, [gameState, renderScale]);
 
   // 滑鼠 / 觸控 handlers 已搬到 useInput hook
   const {
@@ -1319,30 +1340,34 @@ export default function App() {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-0 md:p-4 bg-[#0000AA]">
       <PortraitHint />
+      <div className="w-full flex items-center justify-center gap-6">
+        <aside className="side-panel">
+          <HowToPlay />
+        </aside>
       <div
         ref={gameContainerRef}
         className={`game-container relative bg-black md:border-4 border-[#AAAAAA] shadow-2xl overflow-hidden ${isFullscreen || isPseudoFullscreen ? 'pseudo-fullscreen' : ''}`}
       >
         <div className="game-content relative w-full h-full flex flex-col items-center justify-center">
           {/* Header / Scores & Controls */}
-          <div className="absolute top-0 left-0 right-0 p-4 flex justify-between items-start z-20 pointer-events-none">
+          <div className="hud-bar hud-panel absolute top-0 left-0 right-0 flex justify-between items-start z-20 pointer-events-none">
           {/* Player 1 Side */}
-          <div className="flex items-start gap-2">
-            <div className="bg-black/80 p-2 border-2 border-white pointer-events-auto flex flex-col items-center">
-              <div className="text-[10px] uppercase opacity-70 leading-none mb-1">{gameState?.playerNames[0] || '玩家 1'}</div>
-              <div className="text-xl font-bold text-yellow-400 leading-none mb-2">{gameState?.scores[0]}</div>
+          <div className="flex items-start gap-[0.5em]">
+            <div className="bg-black/80 px-[0.7em] py-[0.5em] border-2 border-cyan-400 pointer-events-auto flex flex-col items-center min-w-[6.5em]">
+              <div className="text-[1em] font-bold text-cyan-300 leading-none mb-[0.3em]">{gameState?.playerNames[0] || '玩家 1'}</div>
+              <div className="text-[2em] font-bold text-yellow-400 leading-none mb-[0.3em]">{gameState?.scores[0]}</div>
               {gameState?.status === 'aiming' && gameState.currentPlayer === 1 && (
-                <div className={`text-2xl font-black mb-2 animate-pulse ${gameState.turnTimeLeft <= 3 ? 'text-red-500' : 'text-white'}`}>
+                <div className={`text-[2.4em] font-black leading-none mb-[0.25em] animate-pulse ${gameState.turnTimeLeft <= 3 ? 'text-red-500' : 'text-white'}`}>
                   {gameState.turnTimeLeft}
                 </div>
               )}
               {gameState && (
-                <div className={`text-[10px] px-1 font-bold ${gameState.player1Projectile !== 'normal' ? 'bg-yellow-400 text-black animate-pulse' : 'bg-white/20 text-white'}`}>
+                <div className={`text-[0.9em] px-[0.3em] font-bold ${gameState.player1Projectile !== 'normal' ? 'bg-yellow-400 text-black animate-pulse' : 'bg-white/20 text-white'}`}>
                   {gameState.player1Projectile === 'giant' ? '十倍大香蕉' : gameState.player1Projectile === 'acid' ? '硫酸瓶' : gameState.player1Projectile === 'beam' ? '導引光束' : gameState.player1Projectile === 'meteor' ? '火熱隕石' : '香蕉'}
                 </div>
               )}
               {gameState && (
-                <div className="mt-1 text-[10px] bg-blue-600/40 text-white px-1 font-bold border-t border-white/20 pt-1">
+                <div className="mt-[0.3em] text-[0.9em] bg-blue-600/40 text-white px-[0.3em] font-bold border-t border-white/20 pt-[0.2em]">
                   本回合得分: {gameState.currentRoundPoints[0]}
                 </div>
               )}
@@ -1350,33 +1375,33 @@ export default function App() {
           </div>
 
           {/* Player 2 Side */}
-          <div className="flex items-start gap-2">
-            <div className="bg-black/80 p-2 border-2 border-white text-right pointer-events-auto flex flex-col items-center">
-              <div className="text-[10px] uppercase opacity-70 leading-none mb-1">{gameState?.playerNames[1] || '玩家 2'}</div>
-              <div className="text-xl font-bold text-yellow-400 leading-none mb-2">{gameState?.scores[1]}</div>
+          <div className="flex items-start gap-[0.5em]">
+            <div className="bg-black/80 px-[0.7em] py-[0.5em] border-2 border-red-400 text-right pointer-events-auto flex flex-col items-center min-w-[6.5em]">
+              <div className="text-[1em] font-bold text-red-300 leading-none mb-[0.3em]">{gameState?.playerNames[1] || '玩家 2'}</div>
+              <div className="text-[2em] font-bold text-yellow-400 leading-none mb-[0.3em]">{gameState?.scores[1]}</div>
               {gameState?.status === 'aiming' && gameState.currentPlayer === 2 && (
-                <div className={`text-2xl font-black mb-2 animate-pulse ${gameState.turnTimeLeft <= 3 ? 'text-red-500' : 'text-white'}`}>
+                <div className={`text-[2.4em] font-black leading-none mb-[0.25em] animate-pulse ${gameState.turnTimeLeft <= 3 ? 'text-red-500' : 'text-white'}`}>
                   {gameState.turnTimeLeft}
                 </div>
               )}
               {gameState && (
-                <div className={`text-[10px] px-1 font-bold inline-block ${gameState.player2Projectile !== 'normal' ? 'bg-yellow-400 text-black animate-pulse' : 'bg-white/20 text-white'}`}>
+                <div className={`text-[0.9em] px-[0.3em] font-bold inline-block ${gameState.player2Projectile !== 'normal' ? 'bg-yellow-400 text-black animate-pulse' : 'bg-white/20 text-white'}`}>
                   {gameState.player2Projectile === 'giant' ? '十倍大香蕉' : gameState.player2Projectile === 'acid' ? '硫酸瓶' : gameState.player2Projectile === 'beam' ? '導引光束' : gameState.player2Projectile === 'meteor' ? '火熱隕石' : '香蕉'}
                 </div>
               )}
               {gameState && (
-                <div className="mt-1 text-[10px] bg-blue-600/40 text-white px-1 font-bold border-t border-white/20 pt-1">
+                <div className="mt-[0.3em] text-[0.9em] bg-blue-600/40 text-white px-[0.3em] font-bold border-t border-white/20 pt-[0.2em]">
                   本回合得分: {gameState.currentRoundPoints[1]}
                 </div>
               )}
             </div>
             {/* Fullscreen toggle during game */}
-            <button 
+            <button
               onClick={toggleFullscreen}
-              className="bg-black/80 p-2 border-2 border-white text-white pointer-events-auto hover:bg-white/20 transition-colors flex items-center justify-center"
+              className="bg-black/80 p-[0.5em] border-2 border-white text-white pointer-events-auto hover:bg-white/20 transition-colors flex items-center justify-center"
               title={isFullscreen ? '退出全螢幕' : '全螢幕'}
             >
-              {isFullscreen ? <Minimize size={16} /> : <Maximize size={16} />}
+              {isFullscreen ? <Minimize className="w-[1.4em] h-[1.4em]" /> : <Maximize className="w-[1.4em] h-[1.4em]" />}
             </button>
           </div>
         </div>
@@ -1384,21 +1409,21 @@ export default function App() {
           {/* Game Canvas */}
           <canvas
             ref={canvasRef}
-            width={CANVAS_WIDTH}
-            height={CANVAS_HEIGHT}
+            width={Math.round(CANVAS_WIDTH * renderScale)}
+            height={Math.round(CANVAS_HEIGHT * renderScale)}
             onMouseDown={handleCanvasMouseDown}
             onMouseMove={handleCanvasMouseMove}
             onMouseUp={handleCanvasMouseUp}
             onTouchStart={handleCanvasTouchStart}
             onTouchMove={handleCanvasTouchMove}
             onTouchEnd={handleCanvasTouchEnd}
-            className="max-w-full h-auto touch-none"
+            className="block w-full h-full touch-none"
           />
 
           {/* Wind Indicator at Bottom Center */}
-          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex flex-col items-center z-10">
-            <div className="bg-black/80 px-4 py-1 border-2 border-white rounded-full flex items-center gap-2 text-xs font-bold">
-              <Wind size={14} className="text-blue-400" />
+          <div className="hud-panel absolute bottom-[1.5%] left-1/2 -translate-x-1/2 flex flex-col items-center z-10">
+            <div className="bg-black/80 px-[1em] py-[0.25em] border-2 border-white rounded-full flex items-center gap-[0.5em] font-bold">
+              <Wind className="w-[1.2em] h-[1.2em] text-blue-400" />
               風向: {Math.abs((gameState?.wind || 0) * 1000).toFixed(0)} { (gameState?.wind || 0) > 0 ? '→' : '←' }
             </div>
           </div>
@@ -1490,9 +1515,14 @@ export default function App() {
       </div>
     </div>
 
-      <div className="mt-8 text-center max-w-lg">
-        <p className="text-sm opacity-60 leading-relaxed">
-          啟發自 1991 年 QBASIC 經典遊戲。調整角度與力量來擊中對手的猩猩。 
+        <aside className="side-panel">
+          <Leaderboard entries={leaderboard} compact />
+        </aside>
+      </div>
+
+      <div className="page-blurb mt-3 md:mt-4 text-center max-w-xl px-4">
+        <p className="text-sm md:text-base opacity-70 leading-relaxed">
+          啟發自 1991 年 QBASIC 經典遊戲。調整角度與力量來擊中對手的猩猩。
           注意風向與重力的影響！
         </p>
       </div>

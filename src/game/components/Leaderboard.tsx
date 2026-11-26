@@ -17,12 +17,16 @@ const PLACEHOLDER: LeaderboardEntry[] = Array(5)
     timestamp: new Date(),
   }));
 
-export function Leaderboard({entries}: {entries: LeaderboardEntry[]}) {
+export function Leaderboard({entries, compact = false}: {entries: LeaderboardEntry[]; compact?: boolean}) {
   const displayBoard = entries.length > 0 ? entries : PLACEHOLDER;
 
   return (
-    <div className="flex-1 w-full max-w-md bg-black/50 border-4 border-yellow-400 p-6 shadow-[0_0_20px_rgba(250,204,21,0.3)]">
-      <div className="flex items-center justify-center gap-3 mb-6">
+    <div
+      className={`flex-1 w-full max-w-md bg-black/50 border-4 border-yellow-400 shadow-[0_0_20px_rgba(250,204,21,0.3)] ${
+        compact ? 'p-5' : 'p-6'
+      }`}
+    >
+      <div className={`flex items-center justify-center gap-3 ${compact ? 'mb-4' : 'mb-6'}`}>
         <Medal className="text-yellow-400" size={32} />
         <h3 className="text-3xl font-black text-white italic tracking-tighter">英雄榜</h3>
       </div>
@@ -31,23 +35,23 @@ export function Leaderboard({entries}: {entries: LeaderboardEntry[]}) {
         {displayBoard.map((entry, idx) => (
           <div
             key={entry.id}
-            className={`flex items-center justify-between p-3 border-2 ${
+            className={`flex items-center justify-between gap-2 p-3 border-2 ${
               idx === 0 ? 'bg-yellow-400/20 border-yellow-400' : 'bg-white/5 border-white/20'
             }`}
           >
-            <div className="flex items-center gap-4">
-              <span className={`text-xl font-black w-6 ${idx === 0 ? 'text-yellow-400' : 'text-white/50'}`}>
+            <div className="flex items-center gap-3 min-w-0">
+              <span className={`text-xl font-black w-6 shrink-0 ${idx === 0 ? 'text-yellow-400' : 'text-white/50'}`}>
                 {idx + 1}
               </span>
-              <span className="text-lg font-bold text-white truncate max-w-[180px]">{entry.name}</span>
+              <span className="text-lg font-bold text-white truncate">{entry.name}</span>
             </div>
-            <span className="text-2xl font-black text-yellow-400 font-mono">{entry.score}</span>
+            <span className="text-2xl font-black text-yellow-400 font-mono shrink-0">{entry.score}</span>
           </div>
         ))}
       </div>
 
-      <div className="mt-8 pt-6 border-t border-white/20 text-center">
-        <p className="text-[10px] uppercase tracking-widest opacity-50">只有最強的猩猩才能名留青史</p>
+      <div className={`border-t border-white/20 text-center ${compact ? 'mt-5 pt-4' : 'mt-8 pt-6'}`}>
+        <p className={`tracking-widest opacity-60 ${compact ? 'text-sm' : 'text-[10px] uppercase'}`}>只有最強的猩猩才能名留青史</p>
       </div>
     </div>
   );
