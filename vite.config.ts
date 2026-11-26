@@ -25,7 +25,8 @@ function resolveAppVersion(): string {
 function latestChangelogNotes(): string[] {
   try {
     const md = fs.readFileSync('CHANGELOG.md', 'utf-8');
-    const section = md.split(/^## /m)[1] ?? '';
+    // 只取最新一節、「### 🔧 技術細節」之前的條目（給玩家看的白話說明）
+    const section = (md.split(/^## /m)[1] ?? '').split(/^### 🔧/m)[0];
     return section
       .split('\n')
       .filter(line => line.startsWith('- '))
