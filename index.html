@@ -4,47 +4,51 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-    <!-- Favicon（多格式，解決 404 問題） -->
-    <link rel="icon" type="image/x-icon" href="./favicon.ico" />
-    <link rel="icon" type="image/png" sizes="512x512" href="./favicon.png" />
-    <link rel="apple-touch-icon" href="./favicon.png" />
+    <!-- 圖示：相對路徑（GitHub Pages 子目錄 /monkey/ 才不會 404），加版本號讓換圖後瀏覽器重抓 -->
+    <link rel="icon" href="./favicon.ico?v=3.18.0-d249b0d" sizes="16x16 32x32 48x48" />
+    <link rel="icon" type="image/png" sizes="192x192" href="./icon-192.png?v=3.18.0-d249b0d" />
+    <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png?v=3.18.0-d249b0d" />
 
     <!-- PWA -->
-    <meta name="theme-color" content="#0a0a0a" />
-    <meta name="app-version" content="3.16.0" />
+    <meta name="theme-color" content="#0000AA" />
+    <meta name="app-version" content="3.18.0-d249b0d" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="猴子丟香蕉" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 
-    <title>猴子投擲大戰 🐒 | Monkey Pixel-Art Clash</title>
-    <meta name="description" content="經典香蕉投擲對戰！控制你的猴子，瞄準對方並投出爆炸香蕉，享受兩人同樂的像素風格城市天際線大戰。" />
+    <title>猴子丟香蕉 🍌｜雙人回合制拋物線對戰</title>
+    <meta name="description" content="啟發自 1991 年 QBASIC 經典遊戲的雙人對戰：拖曳瞄準、算好風向與重力，把香蕉丟向對手的猩猩！6 種戰場主題、寶物道具與英雄榜，電腦、平板、手機都能玩。" />
+    <link rel="canonical" href="https://cagoooo.github.io/monkey/" />
 
-    <!-- Open Graph（Facebook / LINE 分享卡片） -->
+    <!-- Open Graph（Facebook / LINE 分享卡片）：og:image 一定用絕對網址，?v= 每次部署都變，社群平台才會重抓新圖 -->
     <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="猴子丟香蕉" />
+    <meta property="og:locale" content="zh_TW" />
     <meta property="og:url" content="https://cagoooo.github.io/monkey/" />
-    <meta property="og:title" content="猴子投擲大戰 🐒 | Monkey Pixel-Art Clash" />
-    <meta property="og:description" content="經典香蕉投擲對戰！控制你的猴子，瞄準對方並投出爆炸香蕉，享受兩人同樂的像素風格城市天際線大戰。" />
-    <meta property="og:image" content="https://cagoooo.github.io/monkey/og-image.png" />
+    <meta property="og:title" content="猴子丟香蕉 🍌｜雙人回合制拋物線對戰" />
+    <meta property="og:description" content="拖曳瞄準、算好風向與重力，把香蕉丟向對手的猩猩！6 種戰場主題、寶物道具與英雄榜，電腦、平板、手機都能玩。" />
+    <meta property="og:image" content="https://cagoooo.github.io/monkey/og-image.jpg?v=3.18.0-d249b0d" />
+    <meta property="og:image:secure_url" content="https://cagoooo.github.io/monkey/og-image.jpg?v=3.18.0-d249b0d" />
+    <meta property="og:image:type" content="image/jpeg" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
-    <meta property="og:image:alt" content="猴子投擲大戰 — 兩隻猴子在城市天際線上互丟爆炸香蕉" />
-    <meta property="og:locale" content="zh_TW" />
-    <meta property="og:site_name" content="猴子投擲大戰" />
+    <meta property="og:image:alt" content="猴子丟香蕉：藍色像素城市裡兩隻猴子站在大樓頂端，玩家正拉彈弓瞄準對手，旁邊是石門國小校徽" />
 
-    <!-- Twitter Card（X 分享） -->
+    <!-- Twitter / X -->
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="猴子投擲大戰 🐒 | Monkey Pixel-Art Clash" />
-    <meta name="twitter:description" content="經典香蕉投擲對戰！控制你的猴子，瞄準對方並投出爆炸香蕉，享受兩人同樂的像素風格城市天際線大戰。" />
-    <meta name="twitter:image" content="https://cagoooo.github.io/monkey/og-image.png" />
-
-    <!-- LINE 需要的額外標籤 -->
-    <meta property="og:image:secure_url" content="https://cagoooo.github.io/monkey/og-image.png" />
-    <script type="module" crossorigin src="./assets/index-0dpEhGXT.js"></script>
+    <meta name="twitter:title" content="猴子丟香蕉 🍌｜雙人回合制拋物線對戰" />
+    <meta name="twitter:description" content="拖曳瞄準、算好風向與重力，把香蕉丟向對手的猩猩！" />
+    <meta name="twitter:image" content="https://cagoooo.github.io/monkey/og-image.jpg?v=3.18.0-d249b0d" />
+    <meta name="twitter:image:alt" content="猴子丟香蕉遊戲畫面" />
+    <script type="module" crossorigin src="./assets/index-C5MbokTN.js"></script>
     <link rel="modulepreload" crossorigin href="./assets/motion-vendor-DMQVaKeB.js">
     <link rel="modulepreload" crossorigin href="./assets/react-vendor-srHmJwzi.js">
     <link rel="modulepreload" crossorigin href="./assets/icons-vendor-CjqVVTyn.js">
     <link rel="modulepreload" crossorigin href="./assets/firebase-vendor-C472rPB4.js">
-    <link rel="stylesheet" crossorigin href="./assets/index-BtVA98aM.css">
+    <link rel="stylesheet" crossorigin href="./assets/index-B96qz-uM.css">
   <link rel="manifest" href="./manifest.webmanifest"></head>
   <body>
     <div id="root"></div>
   </body>
 </html>
-
