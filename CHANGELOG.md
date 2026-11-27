@@ -1,5 +1,15 @@
 # 📜 更新日誌 (CHANGELOG)
 
+## [3.18.3] - 2026-11-27
+
+### 🛡️ 安全更新
+- 更新遊戲背後的工具，修補已知的安全問題，玩法和畫面都不變。
+
+### 🔧 技術細節
+- 前端（皆為開發／建置工具，不會打包進玩家下載的程式）：happy-dom 20.9 → 21.0.4、vitest／@vitest/ui 4.1.5 → 4.1.12、tsx 4.21 → 4.23（esbuild 0.28.2）、typescript-eslint 8.59 → 8.74（minimatch 11）、@babel/core 7.29.0 → 7.29.13、fflate 0.8.3；overrides：serialize-javascript ^7.1.3、glob ^14.0.2（workbox-build 預先快取清單實測仍為 21 個檔案）。
+- 後端（functions）：express 4.22.3（qs 6.16.2）；overrides：uuid ^11.1.1（firebase-admin 12 內附的 google 套件，實測 v4() 正常）。後端尚未重新部署。
+- 前後端 found 0 vulnerabilities 皆為 0 個弱點。
+
 ## [3.18.2] - 2026-11-27
 
 ### 🎨 改良
