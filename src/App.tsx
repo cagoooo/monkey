@@ -1453,39 +1453,45 @@ export default function App() {
             <motion.div
               initial={{ scale: 0.8, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
-              className="absolute inset-0 flex flex-col items-center justify-center bg-black/60 backdrop-blur-sm z-30"
+              className="absolute inset-0 flex flex-col items-center overflow-y-auto py-[2cqw] bg-black/60 backdrop-blur-sm z-30"
             >
-              <div className="bg-[#0000AA] p-10 border-8 border-white text-center shadow-2xl">
-                <Trophy size={64} className="text-yellow-400 mx-auto mb-4" />
-                <h2 className="text-4xl font-bold mb-2">轟隆！</h2>
-                <p className="text-xl mb-2">
+              {/* 內部尺寸都用 em，根字級跟著遊戲框寬度縮放（cqw），整張卡等比變大變小；
+                  my-auto 置中，放不下時可以捲動而不是把上面切掉 */}
+              <div className="my-auto bg-[#0000AA] p-[2em] border-8 border-white text-center shadow-2xl text-[clamp(12px,1.95cqw,26px)]">
+                <Trophy className="w-[3.5em] h-[3.5em] text-yellow-400 mx-auto mb-[0.8em]" />
+                <h2 className="text-[2.25em] font-bold mb-[0.25em] leading-tight">轟隆！</h2>
+                <p className="text-[1.25em] mb-[0.4em]">
                   {gameState.winner === 1 ? gameState.playerNames[0] : gameState.playerNames[1]} 贏得本回合！
                 </p>
                 {gameState.winner !== gameState.currentPlayer && (
-                  <p className="text-sm text-red-400 mb-6 italic">哎呀！打到自己了！</p>
+                  <p className="text-[0.95em] text-red-400 mb-[1.5em] italic">哎呀！打到自己了！</p>
                 )}
-                <div className="mb-8">
-                  <div className="text-sm opacity-70 uppercase mb-2">本回合得分</div>
-                  <div className="flex justify-center gap-8 mb-4">
-                    <div className="text-center">
-                      <div className="text-[10px] opacity-70">{gameState.playerNames[0]}</div>
-                      <div className="text-2xl font-bold text-white">{gameState.currentRoundPoints[0]}</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-[10px] opacity-70">{gameState.playerNames[1]}</div>
-                      <div className="text-2xl font-bold text-white">{gameState.currentRoundPoints[1]}</div>
+                <div className="mt-[1em] mb-[1.6em] grid grid-cols-2 items-center border-y-2 border-white/20 py-[0.8em]">
+                  <div className="border-r-2 border-white/20 px-[1em]">
+                    <div className="text-[0.875em] opacity-80 mb-[0.4em]">本回合得分</div>
+                    <div className="flex justify-center gap-[1.5em]">
+                      <div className="text-center">
+                        <div className="text-[0.8em] font-bold text-cyan-300">{gameState.playerNames[0]}</div>
+                        <div className="text-[1.6em] font-bold text-white leading-tight">{gameState.currentRoundPoints[0]}</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-[0.8em] font-bold text-red-300">{gameState.playerNames[1]}</div>
+                        <div className="text-[1.6em] font-bold text-white leading-tight">{gameState.currentRoundPoints[1]}</div>
+                      </div>
                     </div>
                   </div>
-                  <div className="text-sm opacity-70 uppercase mb-2">目前總比分</div>
-                  <div className="text-3xl font-bold text-yellow-400">
-                    {gameState.scores[0]} : {gameState.scores[1]}
+                  <div className="px-[1em]">
+                    <div className="text-[0.875em] opacity-80 mb-[0.2em]">目前總比分</div>
+                    <div className="text-[2.4em] font-bold text-yellow-400 leading-tight whitespace-nowrap">
+                      {gameState.scores[0]} : {gameState.scores[1]}
+                    </div>
                   </div>
                 </div>
                 <button
                   onClick={() => initGame()}
-                  className="retro-button flex items-center gap-2 mx-auto"
+                  className="retro-button flex items-center gap-[0.5em] mx-auto text-[1.25em] px-[1.2em] py-[0.4em]"
                 >
-                  <Play size={20} />
+                  <Play className="w-[1.1em] h-[1.1em]" />
                   下一回合
                 </button>
               </div>
